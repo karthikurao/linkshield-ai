@@ -44,6 +44,8 @@ LinkShield AI is an advanced cybersecurity solution that uses machine learning t
 - AWS CLI configured (for deployment)
 - Git
 
+For detailed setup instructions, see [SETUP.md](SETUP.md).
+
 ### Backend Setup
 
 ```bash
@@ -91,6 +93,23 @@ pip install -r requirements.txt
 # Run training script
 python train_bert_model.py
 ```
+
+## Repository Maintenance
+
+This repository follows best practices to keep its size manageable:
+
+1. **Virtual environments** are not committed to Git
+   - Use `pip install -r requirements.txt` to set up your local environment
+
+2. **Node modules** are not committed to Git
+   - Use `npm install` to install frontend dependencies
+
+3. **Large ML datasets** are provided as samples only
+   - Full datasets can be downloaded separately as needed
+
+4. **Build artifacts** should be generated locally
+
+For detailed maintenance guidelines, see [docs/repository_maintenance.md](docs/repository_maintenance.md).
 
 ## Deployment
 

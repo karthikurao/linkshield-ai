@@ -4,10 +4,8 @@ import { fetchAuthSession } from 'aws-amplify/auth'; // <-- Import function to g
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
-// ... (your existing scanUrlApi and getHistoryApi functions are here) ...
-
+// EXISTING SCAN API FUNCTIONS
 export const scanUrlApi = async (urlToScan) => {
-  // ... (no changes to this function)
   const endpoint = `${API_BASE_URL}/api/v1/predict`;
   try {
     const session = await fetchAuthSession();
@@ -21,40 +19,106 @@ export const scanUrlApi = async (urlToScan) => {
       body: JSON.stringify({ url: urlToScan }),
     });
     if (response.ok) return await response.json();
-    else { /* ... error handling ... */ }
-  } catch (error) { /* ... error handling ... */ }
+    else { 
+      const errorData = await response.json().catch(() => ({ error: `Failed to scan URL. Status: ${response.status}` }));
+      throw new Error(errorData.error || 'Unknown error occurred while scanning URL');
+    }
+  } catch (error) { 
+    console.error('URL scan failed:', error);
+    throw error;
+  }
 };
 
-// New function to get detailed factor analysis
-export const getFactorAnalysisApi = async (urlToScan) => {
-  const endpoint = `${API_BASE_URL}/api/factors/analyze`;
+// Add new APIs for advanced features
+
+/**
+ * Gets threat intelligence data
+ * @param {string} timeframe - Time period for data (all, 24h, 7d, 30d)
+ * @returns {Promise<object>} Threat intelligence data
+ */
+export const getThreatIntelligenceApi = async (timeframe = 'all') => {
+  const endpoint = `${API_BASE_URL}/api/v1/threat-intel?timeframe=${timeframe}`;
+  
   try {
     const session = await fetchAuthSession();
     const idToken = session.tokens?.idToken?.toString();
+    
     const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
+      method: 'GET',
+      headers: {
         'Authorization': `Bearer ${idToken}`
-      },
-      body: JSON.stringify({ url: urlToScan }),
+      }
     });
     
     if (response.ok) {
-      const data = await response.json();
-      // Ensure we have the factors array available
-      return {
-        ...data,
-        status: data.prediction, // Map prediction to status for compatibility
-        message: data.prediction === 'benign' 
-          ? 'URL appears to be safe' 
-          : 'URL appears to be malicious'
-      };
+      return await response.json();
     } else {
-      throw new Error(`Failed to analyze URL: ${response.statusText}`);
+      throw new Error(`Failed to fetch threat intelligence: ${response.statusText}`);
     }
   } catch (error) {
-    console.error('Factor analysis API error:', error);
+    console.error('Threat intelligence API error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Gets community reports data
+ * @param {string} filter - Filter for reports (all, pending, confirmed)
+ * @returns {Promise<object>} Community reports data
+ */
+export const getCommunityReportsApi = async (filter = 'all') => {
+  const endpoint = `${API_BASE_URL}/api/v1/community-reports?filter=${filter}`;
+  
+  try {
+    const session = await fetchAuthSession();
+    const idToken = session.tokens?.idToken?.toString();
+    
+    const response = await fetch(endpoint, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${idToken}`
+      }
+    });
+    
+    if (response.ok) {
+      return await response.json();
+    } else {
+      throw new Error(`Failed to fetch community reports: ${response.statusText}`);
+    }
+  } catch (error) {
+    console.error('Community reports API error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Submits a new community report
+ * @param {object} reportData - Report data including URL and reason
+ * @returns {Promise<object>} Submission result
+ */
+export const submitCommunityReportApi = async (reportData) => {
+  const endpoint = `${API_BASE_URL}/api/v1/community-reports`;
+  
+  try {
+    const session = await fetchAuthSession();
+    const idToken = session.tokens?.idToken?.toString();
+    
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${idToken}`
+      },
+      body: JSON.stringify(reportData)
+    });
+    
+    if (response.ok) {
+      return await response.json();
+    } else {
+      throw new Error(`Failed to submit report: ${response.statusText}`);
+    }
+  } catch (error) {
+    console.error('Community report submission error:', error);
     throw error;
   }
 };

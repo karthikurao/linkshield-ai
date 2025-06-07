@@ -9,33 +9,47 @@ graph TD
     E -->|Returns Result| C
     C -->|Stores Results| H[Database]
     B -->|Displays Results| A
-    
-    subgraph "Frontend Layer"
+      subgraph "Frontend Layer"
         B[Frontend UI]
         B1[React Components]
         B2[Context API]
         B3[Router]
         B4[API Services]
         B5[Data Visualization]
+        B6[URL Risk Visualizer]
+        B7[Phishing Simulator]
+        B8[Threat Intel Dashboard]
+        B9[Community Protection]
+        B10[Browser Extension Integration]
         B -->|Contains| B1
         B -->|State Management| B2
         B -->|Navigation| B3
         B -->|Backend Communication| B4
         B -->|Charts & Graphs| B5
+        B -->|URL Analysis| B6
+        B -->|Security Training| B7
+        B -->|Threat Intelligence| B8
+        B -->|Crowdsourced Security| B9
+        B -->|Real-time Protection| B10
     end
-    
-    subgraph "Backend Layer"
+      subgraph "Backend Layer"
         C[Backend API]
         C1[FastAPI Endpoints]
         C2[Authentication]
         C3[URL Validation]
         C4[Error Handling]
         C5[Logging]
+        C6[Community Reports API]
+        C7[Real-time Threat Intelligence]
+        C8[Training Simulation API]
         C -->|REST API| C1
         C -->|Security| C2
         C -->|Input Processing| C3
         C -->|Exception Management| C4
         C -->|Activity Tracking| C5
+        C -->|Crowdsourced Data| C6
+        C -->|Threat Updates| C7
+        C -->|Interactive Learning| C8
     end
     
     subgraph "ML Layer"

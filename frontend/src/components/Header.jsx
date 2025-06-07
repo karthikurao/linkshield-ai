@@ -1,21 +1,17 @@
 // frontend/src/components/Header.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import { useTheme } from '../hooks/useTheme';
 import ThemeToggleButton from './ThemeToggleButton';
 import { Link } from 'react-router-dom';
-import { useAuthenticator } from '@aws-amplify/ui-react';
+import { useAuth } from '../context/AuthContext';
 import { UserCircleIcon, Cog6ToothIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
 
-const Header = () => {
-    // We now get user and signOut directly from the hook inside the component
-    const { user, signOut } = useAuthenticator((context) => [context.user]);
+const Header = () => {    // We now get user and signOut directly from our custom auth hook
+    const { user, signOut, isAuthenticated } = useAuth();
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const dropdownRef = useRef(null);
 
     const getDisplayName = () => {
-        if (!user?.attributes) return 'User';
-        if (user.attributes.name) return user.attributes.name;
-        if (user.attributes.email) return user.attributes.email.split('@')[0];
+        if (!user) return 'User';
         return user.username || 'User';
     };
 
@@ -47,11 +43,17 @@ const Header = () => {
                         LinkShield AI
                     </h1>
                 </Link>
-                
-                <div className="flex items-center space-x-4">
-                    <ThemeToggleButton />
+                  <div className="flex items-center space-x-4">
+                    <nav className="hidden md:flex items-center space-x-6 mr-4 text-sm">
+                        <Link to="/" className="text-slate-700 dark:text-slate-300 hover:text-brand-accent dark:hover:text-brand-accent-dark transition-colors">
+                            Home
+                        </Link>
+                        <Link to="/advanced" className="text-slate-700 dark:text-slate-300 hover:text-brand-accent dark:hover:text-brand-accent-dark transition-colors">
+                            Advanced Features
+                        </Link>
+                    </nav>                    <ThemeToggleButton />
                     
-                    {user ? (
+                    {isAuthenticated ? (
                         // --- Authenticated User View ---
                         <div className="relative" ref={dropdownRef}>
                             <button onClick={() => setDropdownOpen(!dropdownOpen)} className="w-9 h-9 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-accent dark:focus:ring-offset-slate-900">
@@ -62,7 +64,6 @@ const Header = () => {
                                     <div className="py-1">
                                         <div className="px-4 py-2 border-b border-slate-200 dark:border-slate-700">
                                             <p className="text-sm font-medium text-slate-900 dark:text-slate-200 truncate">{getDisplayName()}</p>
-                                            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user.attributes?.email}</p>
                                         </div>
                                         <Link to="/profile" onClick={() => setDropdownOpen(false)} className="w-full text-left text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 group flex items-center px-4 py-2 text-sm">
                                             <Cog6ToothIcon className="mr-3 h-5 w-5 text-slate-400" />

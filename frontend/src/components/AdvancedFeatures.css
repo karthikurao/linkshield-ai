@@ -1,0 +1,161 @@
+/* frontend/src/components/AdvancedFeatures.css */
+
+/* URL Risk Visualizer */
+.url-visualizer .url-components > div {
+  transition: all 0.2s ease-in-out;
+}
+
+.url-visualizer .high-risk {
+  background-color: rgba(239, 68, 68, 0.1);
+  border-left: 3px solid rgb(239, 68, 68);
+}
+
+.url-visualizer .medium-risk {
+  background-color: rgba(245, 158, 11, 0.1);
+  border-left: 3px solid rgb(245, 158, 11);
+}
+
+.url-visualizer .low-risk {
+  background-color: rgba(59, 130, 246, 0.1);
+  border-left: 3px solid rgb(59, 130, 246);
+}
+
+.url-visualizer .safe {
+  background-color: rgba(16, 185, 129, 0.1);
+  border-left: 3px solid rgb(16, 185, 129);
+}
+
+.url-visualizer .neutral {
+  background-color: rgba(156, 163, 175, 0.1);
+  border-left: 3px solid rgb(156, 163, 175);
+}
+
+.risk-legend {
+  font-size: 0.75rem;
+}
+
+.risk-legend span {
+  position: relative;
+  padding-left: 18px;
+}
+
+.risk-legend span::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.high-risk-dot::before {
+  background-color: rgb(239, 68, 68);
+}
+
+.medium-risk-dot::before {
+  background-color: rgb(245, 158, 11);
+}
+
+.low-risk-dot::before {
+  background-color: rgb(59, 130, 246);
+}
+
+.safe-dot::before {
+  background-color: rgb(16, 185, 129);
+}
+
+/* Phishing Simulator */
+.phishing-simulator .email-preview,
+.phishing-simulator .website-preview,
+.phishing-simulator .sms-preview {
+  transition: all 0.3s ease;
+}
+
+.phishing-simulator .email-link,
+.phishing-simulator .sms-link {
+  word-break: break-all;
+}
+
+.phishing-simulator .clues-section ul li {
+  transition: opacity 0.5s ease-in;
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Threat Intelligence Dashboard */
+.threat-intel-dashboard .stat-card {
+  transition: all 0.2s ease;
+}
+
+.threat-intel-dashboard .stat-card:hover {
+  transform: translateY(-3px);
+}
+
+.threat-intel-dashboard .category-item .bg-brand-accent {
+  transition: width 1s ease-in-out;
+}
+
+.threat-intel-dashboard .keyword-cloud span {
+  transition: all 0.2s ease;
+}
+
+.threat-intel-dashboard .keyword-cloud span:hover {
+  transform: scale(1.05);
+  opacity: 1 !important;
+}
+
+/* Community Protection */
+.community-protection .report-item {
+  transition: all 0.2s ease;
+}
+
+.community-protection .report-item:hover {
+  transform: translateX(3px);
+}
+
+.community-protection .contributor-item {
+  transition: all 0.2s ease;
+}
+
+.community-protection .contributor-item:hover {
+  transform: translateX(3px);
+}
+
+/* Browser Extension Promo */
+.browser-extension-promo {
+  position: relative;
+  overflow: hidden;
+}
+
+.browser-extension-promo::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    45deg,
+    rgba(59, 130, 246, 0.1) 0%,
+    rgba(16, 185, 129, 0.1) 100%
+  );
+  z-index: -1;
+}
+
+.browser-icon-grid {
+  transform: rotate(-5deg);
+}
+
+.browser-icon {
+  transition: all 0.2s ease;
+}
+
+.browser-icon:hover {
+  transform: scale(1.1);
+}

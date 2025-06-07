@@ -10,7 +10,8 @@ import '@aws-amplify/ui-react/styles.css';
 // Your custom theme overrides - import it AFTER the default styles
 import './amplify-theme.css'; 
 
-// ... (your Amplify.configure block remains the same)
+// Configure Amplify with your AWS resources
+// These should be using the AWS free tier
 Amplify.configure({
   Auth: {
     Cognito: {

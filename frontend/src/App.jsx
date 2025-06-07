@@ -7,35 +7,37 @@ import Header from './components/Header';
 import URLInputForm from './components/URLInputForm';
 import ScanResultDisplay from './components/ScanResultDisplay';
 import ScanHistoryList from './components/ScanHistoryList';
-import ProfilePage from './pages/ProfilePage';
-import LoginPage from './pages/LoginPage';
+import ProfilePage from './pages/MockProfilePage';
+import LoginPage from './pages/MockLoginPage';
+import AdvancedFeaturesPage from './pages/AdvancedFeaturesPage';
 import { scanUrlApi, getFactorAnalysisApi } from './services/api';
 
-// --- THIS IS THE CORRECTED IMPORT LINE ---
-import { Authenticator, useAuthenticator } from '@aws-amplify/ui-react';
-import '@aws-amplify/ui-react/styles.css';
+// CSS imports
+import './components/AdvancedFeatures.css';
+
+// Import our custom auth context instead of AWS Amplify
+import { AuthProvider, useAuth } from './context/AuthContext';
 
 // A special component to protect routes that require authentication
 const ProtectedRoute = ({ children }) => {
-    const { authStatus } = useAuthenticator(context => [context.authStatus]);
+    const { isAuthenticated } = useAuth();
     const location = useLocation();
 
-    if (authStatus === 'unauthenticated') {
+    if (!isAuthenticated) {
         // Redirect them to the /login page, but save the current location they were
         // trying to go to. This allows us to send them back there after login.
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
     
-    // If authenticated, render the children components (e.g., the ProfilePage)
+    // If authenticated, render the children components
     return children;
 };
 
 
 // MainApp now only contains the page content, without auth logic
 const AppContent = () => {
-  const { overlayStyle } = useTheme(); 
-  const { authStatus } = useAuthenticator(context => [context.authStatus]);
-  const isAuthenticated = authStatus === 'authenticated';
+  const { overlayStyle } = useTheme();
+  const { isAuthenticated } = useAuth();
 
   const [scanResult, setScanResult] = useState({ status: 'idle' });
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -54,20 +56,21 @@ const AppContent = () => {
     }
 
     setScanResult({ status: 'loading', url: urlToScan, message: 'Analyzing URL...' });
+    
     try {
-      // First try to use the detailed factor analysis endpoint
+      // Try to get detailed analysis
       const resultFromApi = await getFactorAnalysisApi(urlToScan);
       setScanResult(resultFromApi);
-    } catch (error) {
+    } catch {
       // Fall back to the standard scan API if the factor analysis fails
       try {
         const resultFromApi = await scanUrlApi(urlToScan);
         setScanResult(resultFromApi);
-      } catch (secondError) {
+      } catch (error) {
         setScanResult({ 
           status: 'error', 
           url: urlToScan, 
-          message: secondError.message || 'Failed to scan URL.' 
+          message: error.message || 'Failed to scan URL.' 
         });
       }
     } finally {
@@ -94,6 +97,11 @@ const AppContent = () => {
             <ProtectedRoute>
               <ProfilePage />
             </ProtectedRoute>
+          } />
+          <Route path="/advanced" element={
+            <div className="w-full">
+              <AdvancedFeaturesPage />
+            </div>
           } />
           <Route path="/" element={
             <div className="w-full max-w-2xl">
@@ -135,14 +143,13 @@ const AppContent = () => {
 // Main App component now just provides context and routing
 function App() {
   return (
-    <ThemeProvider>
-      <Router>
-        {/* We use Authenticator.Provider to make auth state available to all routes */}
-        <Authenticator.Provider>
-            <AppContent />
-        </Authenticator.Provider>
-      </Router>
-    </ThemeProvider>
+    <AuthProvider>
+      <ThemeProvider>
+        <Router>
+          <AppContent />
+        </Router>
+      </ThemeProvider>
+    </AuthProvider>
   );
 }
 
