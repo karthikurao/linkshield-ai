@@ -1,0 +1,17 @@
+Step	Training Loss	Validation Loss	Accuracy	Precision	Recall	F1	Roc Auc
+41254	0.648800	0.685178	0.650042	0.000000	0.000000	0.000000	0.495638
+82508	0.628300	0.667081	0.650042	0.000000	0.000000	0.000000	0.500444
+/usr/local/lib/python3.11/dist-packages/sklearn/metrics/_classification.py:1565: UndefinedMetricWarning: Precision is ill-defined and being set to 0.0 due to no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, f"{metric.capitalize()} is", len(result))
+/usr/local/lib/python3.11/dist-packages/sklearn/metrics/_classification.py:1565: UndefinedMetricWarning: Precision is ill-defined and being set to 0.0 due to no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, f"{metric.capitalize()} is", len(result))
+✅ Training complete!
+
+📊 Evaluating the final model...
+ [10314/10314 04:46]
+/usr/local/lib/python3.11/dist-packages/sklearn/metrics/_classification.py:1565: UndefinedMetricWarning: Precision is ill-defined and being set to 0.0 due to no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, f"{metric.capitalize()} is", len(result))
+Final evaluation results: {'eval_loss': 0.6670810580253601, 'eval_accuracy': 0.6500418146339099, 'eval_precision': 0.0, 'eval_recall': 0.0, 'eval_f1': 0.0, 'eval_roc_auc': 0.5004441952161307, 'eval_runtime': 288.9649, 'eval_samples_per_second': 571.052, 'eval_steps_per_second': 35.693, 'epoch': 2.0}
+
+💾 Saving the final (best) model and tokenizer to: phishing-url-detector
+✅ Model and tokenizer saved successfully.

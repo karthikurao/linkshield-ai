@@ -1,0 +1,82 @@
+/* frontend/src/amplify-theme.css */
+/* This file provides a custom theme for the AWS Amplify Authenticator component. */
+
+/* --- Step 1: Apply the gradient background to the entire page --- */
+/* We target the 'body' when the Authenticator is present to apply our app's background */
+body:has([data-amplify-authenticator]) {
+  background-image: linear-gradient(to bottom right, #f8fafc, #e2e8f0);
+}
+
+html.dark body:has([data-amplify-authenticator]) {
+  background-image: linear-gradient(to bottom right, #0f172a, #1e293b);
+}
+
+
+/* --- Step 2: Define the overall theme for the Authenticator component --- */
+[data-amplify-authenticator] {
+  /* Set the default font for all text inside the Authenticator */
+  --amplify-fonts-default-variable: 'Inter', sans-serif;
+  --amplify-fonts-default-static: 'Inter', sans-serif;
+
+  /* Set our Teal accent color as the primary brand color */
+  --amplify-colors-brand-primary-10: hsl(173, 58%, 90%);
+  --amplify-colors-brand-primary-20: hsl(173, 58%, 80%);
+  --amplify-colors-brand-primary-40: hsl(173, 58%, 70%);
+  --amplify-colors-brand-primary-60: hsl(173, 58%, 60%);
+  --amplify-colors-brand-primary-80: #14b8a6; /* Main Teal */
+  --amplify-colors-brand-primary-90: #0d9488;
+  --amplify-colors-brand-primary-100: #0f766e;
+  
+  /* Make the main container take up available space */
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* --- Step 3: Style the main card to have the "glassy" effect --- */
+[data-amplify-authenticator] [data-amplify-card] {
+  max-width: 420px; /* Set a max-width for the login box */
+  background-color: rgba(255, 255, 255, 0.6); /* Semi-transparent white for light mode */
+  backdrop-filter: blur(12px); /* The "glass" effect */
+  border: 1px solid rgba(203, 213, 225, 0.7); /* border-slate-300/70 */
+  border-radius: 0.75rem; /* rounded-xl */
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1); /* shadow-2xl */
+}
+
+html.dark [data-amplify-authenticator] [data-amplify-card] {
+  background-color: rgba(30, 41, 59, 0.75); /* dark:bg-slate-800/75 */
+  border: 1px solid rgba(51, 65, 85, 0.8); /* dark:border-slate-700/80 */
+}
+
+/* --- Step 4: Style the input fields --- */
+[data-amplify-authenticator] .amplify-field {
+  --amplify-components-fieldcontrol-background-color: hsl(220, 13%, 95%);
+  --amplify-components-fieldcontrol-border-color: hsl(220, 13%, 85%);
+  --amplify-components-fieldcontrol-focus-border-color: var(--amplify-colors-brand-primary-80);
+}
+
+html.dark [data-amplify-authenticator] .amplify-field {
+  --amplify-components-fieldcontrol-background-color: hsl(222, 14%, 22%); /* dark:bg-slate-700 */
+  --amplify-components-fieldcontrol-border-color: hsl(220, 13%, 40%);
+  --amplify-colors-font-primary: hsl(220, 14%, 90%);
+  --amplify-colors-font-secondary: hsl(220, 13%, 70%);
+}
+
+/* --- Step 5: Style the tabs (Sign In / Create Account) --- */
+[data-amplify-authenticator] .amplify-tabs-item {
+  color: hsl(220, 13%, 50%);
+}
+
+html.dark [data-amplify-authenticator] .amplify-tabs-item {
+  color: hsl(220, 13%, 63%);
+}
+
+[data-amplify-authenticator] .amplify-tabs-item[data-state='active'] {
+  color: var(--amplify-colors-brand-primary-90);
+  border-color: var(--amplify-colors-brand-primary-80);
+}
+
+html.dark [data-amplify-authenticator] .amplify-tabs-item[data-state='active'] {
+  color: var(--amplify-colors-brand-primary-80);
+}

@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+*.egg-info/
+dist/
+build/
+*.db
+*.sqlite3
+
+# Node
+node_modules/
+build/
+dist/
+.DS_Store
+coverage/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.idea/
+.vscode/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# Large files will be handled by Git LFS
+# Do not exclude necessary model files that are tracked by LFS
+
+# Frontend build output
+frontend/dist/
+frontend/build/
+
+# Virtual environments
+ml_training/venv_ml/
+backend/venv/
+
+# Serverless deployment files
+.serverless/
+**/.serverless/
+backend/.serverless/linkshield-ai-backend.zip
+backend/.serverless/pythonRequirements.zip
+
+# ML training checkpoints
+ml_training/results/checkpoint-*/
+ml_training/results/checkpoint-500/optimizer.pt
+
+# Misc
+**/.pytest_cache/
+**/.coverage
+**/.DS_Store
+**/.ipynb_checkpoints/

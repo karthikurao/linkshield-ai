@@ -1,0 +1,60 @@
+# backend/serverless.yml
+
+service: linkshield-ai-backend
+
+frameworkVersion: '^4.0'
+
+provider:
+  name: aws
+  runtime: python3.11
+  region: ap-south-1
+  
+  environment: 
+    S3_MODEL_BUCKET: linkshield-ai-model-bucket-karth123
+    S3_MODEL_KEY: phishing-url-detector-model.zip
+    SCAN_HISTORY_TABLE_NAME: ScanHistory
+    COGNITO_USER_POOL_ID: ap-south-1_tPEw9NNDY
+    AWS_REGION: ${aws:region}
+    VIRUSTOTAL_API_KEY: ${env:VIRUSTOTAL_API_KEY}
+
+  iam:
+    role:
+      statements:
+        - Effect: "Allow"
+          Action: ["s3:GetObject"]
+          Resource: "arn:aws:s3:::linkshield-ai-model-bucket-karth123/*"
+        - Effect: "Allow"
+          Action: ["dynamodb:PutItem", "dynamodb:Scan"]
+          Resource: "arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/ScanHistory"
+        - Effect: "Allow"
+          Action: ["cognito-idp:AdminUpdateUserAttributes"]
+          Resource: "arn:aws:cognito-idp:${aws:region}:${aws:accountId}:userpool/${self:provider.environment.COGNITO_USER_POOL_ID}"
+
+package:
+  patterns:
+    - '!venv/**'
+    - '!__pycache__/**'
+
+functions:
+  api:
+    handler: app.main.handler
+    timeout: 30 
+    memorySize: 1024
+    events:
+      - httpApi: '*'
+
+plugins:
+  - serverless-python-requirements
+
+custom:
+  pythonRequirements:
+    dockerizePip: true 
+    layer: true
+    # --- ADD THESE LINES for better caching ---
+    useStaticCache: true
+    useDownloadCache: true
+    # --- End added lines ---
+    noDeploy:
+      - boto3
+      - botocore
+      - s3transfer
