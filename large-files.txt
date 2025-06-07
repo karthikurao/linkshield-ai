@@ -1,0 +1,3 @@
+backend/.serverless/linkshield-ai-backend.zip
+backend/.serverless/pythonRequirements.zip
+ml_training/results/checkpoint-500/optimizer.pt

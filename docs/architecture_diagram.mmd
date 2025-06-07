@@ -1,0 +1,97 @@
+graph TD
+    A[User] -->|Interacts with| B[Frontend UI]
+    B -->|API Calls| C[Backend API]
+    C -->|Authentication| D[JWT Auth]
+    C -->|URL Processing| E[URL Analyzer]
+    E -->|Features Extraction| F[Feature Extractor]
+    F -->|Model Inference| G[ML Model]
+    G -->|Returns Prediction| E
+    E -->|Returns Result| C
+    C -->|Stores Results| H[Database]
+    B -->|Displays Results| A
+      subgraph "Frontend Layer"
+        B[Frontend UI]
+        B1[React Components]
+        B2[Context API]
+        B3[Router]
+        B4[API Services]
+        B5[Data Visualization]
+        B6[URL Risk Visualizer]
+        B7[Phishing Simulator]
+        B8[Threat Intel Dashboard]
+        B9[Community Protection]
+        B10[Browser Extension Integration]
+        B -->|Contains| B1
+        B -->|State Management| B2
+        B -->|Navigation| B3
+        B -->|Backend Communication| B4
+        B -->|Charts & Graphs| B5
+        B -->|URL Analysis| B6
+        B -->|Security Training| B7
+        B -->|Threat Intelligence| B8
+        B -->|Crowdsourced Security| B9
+        B -->|Real-time Protection| B10
+    end
+      subgraph "Backend Layer"
+        C[Backend API]
+        C1[FastAPI Endpoints]
+        C2[Authentication]
+        C3[URL Validation]
+        C4[Error Handling]
+        C5[Logging]
+        C6[Community Reports API]
+        C7[Real-time Threat Intelligence]
+        C8[Training Simulation API]
+        C -->|REST API| C1
+        C -->|Security| C2
+        C -->|Input Processing| C3
+        C -->|Exception Management| C4
+        C -->|Activity Tracking| C5
+        C -->|Crowdsourced Data| C6
+        C -->|Threat Updates| C7
+        C -->|Interactive Learning| C8
+    end
+    
+    subgraph "ML Layer"
+        G[ML Model]
+        G1[BERT Model]
+        G2[Tokenizer]
+        G3[Feature Extraction]
+        G4[Prediction Logic]
+        G -->|Core Model| G1
+        G -->|Text Processing| G2
+        G -->|URL Features| G3
+        G -->|Classification| G4
+    end
+    
+    subgraph "Data Layer"
+        H[Database]
+        H1[Users Table]
+        H2[Scans Table]
+        H3[Features Table]
+        H4[Categories Table]
+        H -->|User Data| H1
+        H -->|Scan Records| H2
+        H -->|Feature Data| H3
+        H -->|Classification Data| H4
+    end
+    
+    subgraph "Deployment Infrastructure"
+        I[AWS Cloud]
+        I1[Lambda Functions]
+        I2[API Gateway]
+        I3[S3 Bucket]
+        I4[CloudFront]
+        I5[RDS Database]
+        I -->|Serverless Backend| I1
+        I -->|API Routing| I2
+        I -->|Static Hosting| I3
+        I -->|Content Delivery| I4
+        I -->|Data Storage| I5
+    end
+    
+    C -->|Deployed on| I1
+    I2 -->|Routes to| I1
+    B -->|Hosted on| I3
+    I3 -->|Distributed via| I4
+    H -->|Implemented with| I5
