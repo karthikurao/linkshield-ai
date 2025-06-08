@@ -2,17 +2,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ThemeToggleButton from './ThemeToggleButton';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuthenticator } from '@aws-amplify/ui-react';
 import { UserCircleIcon, Cog6ToothIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
 
-const Header = () => {    // We now get user and signOut directly from our custom auth hook
-    const { user, signOut, isAuthenticated } = useAuth();
+const Header = () => {
+    const { user, signOut, authStatus } = useAuthenticator(context => [context.user, context.signOut, context.authStatus]);
+    const isAuthenticated = authStatus === 'authenticated';
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const dropdownRef = useRef(null);
 
     const getDisplayName = () => {
         if (!user) return 'User';
-        return user.username || 'User';
+        return user.username || user.attributes?.email || 'User';
     };
 
     useEffect(() => {

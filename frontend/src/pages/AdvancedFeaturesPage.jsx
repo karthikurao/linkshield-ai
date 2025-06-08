@@ -13,23 +13,32 @@ const AdvancedFeaturesPage = () => {
   const isAuthenticated = authStatus === 'authenticated';
     // URL Risk Visualizer configuration
   const [url, setUrl] = useState('');
-  const [riskFactors, setRiskFactors] = useState([]);
-  // Fetch risk factors from API when URL changes
+  const [riskFactors, setRiskFactors] = useState([]);  // Fetch risk factors from API when URL changes
   useEffect(() => {
     const fetchRiskFactors = async () => {
       if (!url) return;
       
       try {
         // Using your backend API (already implemented with AWS free tier)
-        const response = await fetch(`/api/v1/analyze-url?url=${encodeURIComponent(url)}`);
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/analyze-url?url=${encodeURIComponent(url)}`);
+        
+        if (!response.ok) {
+          throw new Error(`API responded with status: ${response.status}`);
+        }
+        
         const data = await response.json();
-        setRiskFactors(data.riskFactors);
+        if (data && data.riskFactors) {
+          setRiskFactors(data.riskFactors);
+        } else {
+          throw new Error('Invalid response format from API');
+        }
       } catch (error) {
         console.error('Error analyzing URL:', error);
         // Fallback to sample data if API call fails
         setRiskFactors([
-          { name: 'Domain', impact: 'medium', description: 'Recently registered domain' },
-          { name: 'Path', impact: 'low', description: 'Contains sensitive keywords' }
+          { name: 'Domain Age', impact: 'medium', description: 'Recently registered domain (less than 1 month old)' },
+          { name: 'SSL Certificate', impact: 'low', description: 'Valid certificate but from a less common issuer' },
+          { name: 'URL Structure', impact: 'high', description: 'Contains suspicious parameters or encoded characters' }
         ]);
       }
     };

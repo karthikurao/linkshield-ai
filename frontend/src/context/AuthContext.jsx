@@ -1,98 +1,30 @@
 // frontend/src/context/AuthContext.jsx
-import React, { createContext, useContext, useState, useEffect } from 'react';
+// This file has been deprecated in favor of AWS Amplify authentication.
+// For compatibility with existing code, we provide a wrapper around the AWS Amplify useAuthenticator hook.
 
-// Create a context for authentication
-const AuthContext = createContext(null);
+import React from 'react';
+import { useAuthenticator } from '@aws-amplify/ui-react';
 
-// This provider component will wrap your app and provide authentication state
-export const AuthProvider = ({ children }) => {
-  const [authState, setAuthState] = useState({
-    isAuthenticated: false,
-    user: null,
-    loading: true
-  });
-
-  // Check for existing login on page load
-  useEffect(() => {
-    const savedUser = localStorage.getItem('mockAuthUser');
-    if (savedUser) {
-      setAuthState({
-        isAuthenticated: true,
-        user: { username: savedUser },
-        loading: false
-      });
-    } else {
-      setAuthState({
-        isAuthenticated: false,
-        user: null,
-        loading: false
-      });
-    }
-  }, []);
-
-  // Login function - in a real app, this would call your backend API
-  const signIn = async (username, password) => {
-    // Simple mock authentication
-    if (username && password) {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Store in localStorage for persistence
-      localStorage.setItem('mockAuthUser', username);
-      
-      setAuthState({
-        isAuthenticated: true,
-        user: { username },
-        loading: false
-      });
-      
-      return { success: true };
-    }
-    
-    return { success: false, error: 'Invalid credentials' };
-  };
-
-  // Logout function
-  const signOut = async () => {
-    localStorage.removeItem('mockAuthUser');
-    setAuthState({
-      isAuthenticated: false,
-      user: null,
-      loading: false
-    });
-  };
-
-  // Create a value object with all the data and functions consumers need
-  const contextValue = {
-    ...authState,
-    signIn,
-    signOut
-  };
-
-  return (
-    <AuthContext.Provider value={contextValue}>
-      {children}
-    </AuthContext.Provider>
-  );
-};
-
-// Custom hook to use the auth context
+// This is a compatibility layer to help with the transition to AWS Amplify auth
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
-
-// For compatibility with existing code using AWS Amplify
-export const useAuthenticator = () => {
-  const { isAuthenticated, user, signIn, signOut } = useAuth();
+  const { user, authStatus, signOut } = useAuthenticator(context => [context.user, context.authStatus, context.signOut]);
   
   return {
-    authStatus: isAuthenticated ? 'authenticated' : 'unauthenticated',
+    isAuthenticated: authStatus === 'authenticated',
     user: user,
-    signIn,
+    signIn: async () => {
+      console.warn('Custom signIn method is deprecated. Use Amplify Authenticator component instead.');
+      return { success: false, error: 'Please use the AWS Amplify authentication flow.' };
+    },
     signOut
   };
 };
+
+// Compatibility layer for the old AuthProvider
+export const AuthProvider = ({ children }) => {
+  console.warn('AuthProvider is deprecated. Use Authenticator.Provider from AWS Amplify instead.');
+  return children;
+};
+
+// Export useAuthenticator directly for compatibility
+export { useAuthenticator };

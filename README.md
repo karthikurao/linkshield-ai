@@ -12,7 +12,7 @@ LinkShield AI is an advanced cybersecurity solution that uses machine learning t
 - **ML-Powered Detection**: Advanced BERT-based model trained on phishing datasets
 - **User-Friendly Interface**: Clean, responsive UI with dark/light mode support
 - **Scan History**: Track and review previous URL scans
-- **User Profiles**: Personalized experience with user accounts
+- **User Profiles**: Personalized experience with AWS Cognito authentication
 - **Serverless Architecture**: Scalable backend deployed on AWS Lambda
 
 ## Technology Stack
@@ -22,12 +22,13 @@ LinkShield AI is an advanced cybersecurity solution that uses machine learning t
 - Tailwind CSS
 - Vite (build tool)
 - React Router
-- Context API for state management
+- AWS Amplify for authentication
+- Context API for theme management
 
 ### Backend
 - FastAPI (Python)
 - Serverless Framework
-- JWT Authentication
+- AWS Cognito Authentication
 - AWS Lambda
 
 ### Machine Learning
