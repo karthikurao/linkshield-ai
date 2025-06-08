@@ -6,29 +6,26 @@ import PhishingSimulator from '../components/PhishingSimulator';
 import ThreatIntelDashboard from '../components/ThreatIntelDashboard';
 import CommunityProtection from '../components/CommunityProtection';
 import { useAuthenticator } from '@aws-amplify/ui-react';
+import { getFactorAnalysisApi } from '../services/api';
 
 const AdvancedFeaturesPage = () => {
   const [activeTab, setActiveTab] = useState('threatIntel');
   const { authStatus } = useAuthenticator(context => [context.authStatus]);
   const isAuthenticated = authStatus === 'authenticated';
-    // URL Risk Visualizer configuration
+  
+  // URL Risk Visualizer configuration
   const [url, setUrl] = useState('');
-  const [riskFactors, setRiskFactors] = useState([]);  // Fetch risk factors from API when URL changes
+  const [riskFactors, setRiskFactors] = useState([]);
+  
   useEffect(() => {
     const fetchRiskFactors = async () => {
       if (!url) return;
       
       try {
-        // Using your backend API (already implemented with AWS free tier)
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/analyze-url?url=${encodeURIComponent(url)}`);
-        
-        if (!response.ok) {
-          throw new Error(`API responded with status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        if (data && data.riskFactors) {
-          setRiskFactors(data.riskFactors);
+        // Using the API service for consistent authentication handling
+        const result = await getFactorAnalysisApi(url);
+        if (result.riskFactors) {
+          setRiskFactors(result.riskFactors);
         } else {
           throw new Error('Invalid response format from API');
         }
