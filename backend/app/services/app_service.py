@@ -1,7 +1,12 @@
 # backend/app/services/app_service.py
 from fastapi import HTTPException, status
 from app.models.url import URLScanResponse
-from transformers import BertForSequenceClassification, BertTokenizer
+# try to import transformers, but don't fail if it's not available
+try:
+    from transformers import BertForSequenceClassification, BertTokenizer
+    transformers_available = True
+except ImportError:
+    transformers_available = False
 import torch
 import uuid
 import boto3
@@ -211,6 +216,8 @@ def analyze_url_for_details(url: str) -> List[str]:
     try:
         parsed_url = urlparse(url)
         hostname = parsed_url.netloc
+        path = parsed_url.path
+        query = parsed_url.query
         
         # 1. HTTPS Check
         if parsed_url.scheme != 'https':
@@ -222,28 +229,87 @@ def analyze_url_for_details(url: str) -> List[str]:
 
         # 3. Subdomain Count
         if hostname:
-            subdomain_count = len(hostname.split('.'))
-            if subdomain_count > 3: # e.g., mail.google.com is 3. more than that can be suspicious.
+            parts = hostname.split('.')
+            subdomain_count = len(parts) - 2 if len(parts) > 2 else 0
+            if subdomain_count > 2: # e.g., mail.google.com has 1 subdomain. more than 2 can be suspicious.
                 details.append(f"Contains {subdomain_count} subdomains, which can be a sign of obfuscation.")
+                
+            # Check for excessively long subdomain
+            if any(len(part) > 30 for part in parts):
+                details.append("Contains unusually long subdomain names, which can be suspicious.")
 
         # 4. Suspicious TLDs
-        suspicious_tlds = ['.xyz', '.top', '.club', '.info', '.loan', '.gq', '.tk']
-        tld = os.path.splitext(hostname)[1]
-        if tld in suspicious_tlds:
-            details.append(f"Uses an uncommon or suspicious Top-Level Domain (TLD): {tld}.")
+        suspicious_tlds = ['.xyz', '.top', '.club', '.info', '.loan', '.gq', '.tk', '.ml', '.ga', '.cf', '.pw']
+        if hostname and '.' in hostname:
+            tld = '.' + hostname.split('.')[-1]
+            if tld in suspicious_tlds:
+                details.append(f"Uses an uncommon or suspicious Top-Level Domain (TLD): {tld}.")
 
         # 5. Suspicious Keywords
-        suspicious_keywords = ['login', 'secure', 'account', 'update', 'signin', 'verify', 'password']
+        suspicious_keywords = [
+            'login', 'secure', 'account', 'update', 'signin', 'verify', 'password', 
+            'bank', 'paypal', 'netflix', 'amazon', 'apple', 'microsoft', 'support',
+            'billing', 'confirm', 'security', 'alert', 'suspended'
+        ]
+        found_keywords = []
         for keyword in suspicious_keywords:
             if keyword in url.lower():
-                details.append(f"URL contains a potentially sensitive keyword: '{keyword}'.")
-                break # Only report the first one found for brevity
+                found_keywords.append(keyword)
+                
+        if found_keywords:
+            details.append(f"URL contains potentially sensitive keywords: {', '.join(found_keywords[:3])}.")
+            if len(found_keywords) > 3:
+                details.append(f"URL contains {len(found_keywords)} suspicious keywords in total.")
 
-        # 6. Count of special characters
-        special_chars = ['@', '?', '=', '%', '&']
-        special_char_count = sum(url.count(char) for char in special_chars)
-        if special_char_count > 3:
-            details.append(f"Contains a high number of special characters ({special_char_count}).")
+        # 6. Special characters analysis
+        special_chars = ['@', '?', '=', '%', '&', '+', '$', '#', '~', '*']
+        special_char_counts = {char: url.count(char) for char in special_chars if url.count(char) > 0}
+        if special_char_counts:
+            unusual_chars = [f"{char} ({count})" for char, count in special_char_counts.items() if count > 2]
+            if unusual_chars:
+                details.append(f"Contains unusual frequency of special characters: {', '.join(unusual_chars)}.")
+        
+        # 7. Check for URL encoding abuse
+        encoding_count = url.count('%')
+        if encoding_count > 5:
+            details.append(f"Contains excessive URL encoding ({encoding_count} instances), which can hide malicious content.")
+        
+        # 8. Path depth analysis
+        if path:
+            path_depth = len([p for p in path.split('/') if p])
+            if path_depth > 4:
+                details.append(f"URL has a deep path structure ({path_depth} levels), which can be suspicious.")
+        
+        # 9. Query parameter analysis
+        if query:
+            query_params = query.split('&')
+            if len(query_params) > 7:
+                details.append(f"URL contains many query parameters ({len(query_params)}), which can be suspicious.")
+                
+            # Check for excessive parameter length
+            long_params = [param for param in query_params if len(param) > 50]
+            if long_params:
+                details.append(f"Contains {len(long_params)} unusually long query parameters.")
+        
+        # 10. Check for typosquatting attempts (common brand misspellings)
+        common_brands = {
+            'google': ['gogle', 'googel', 'g00gle', 'gooogle'],
+            'microsoft': ['microsft', 'micr0soft', 'mikrosoft', 'micrsoft'],
+            'facebook': ['faceb00k', 'facbook', 'facebok', 'faceboook'],
+            'apple': ['appl', 'aple', 'appple'],
+            'amazon': ['amaz0n', 'amazn', 'amazonn'],
+            'paypal': ['payp', 'paypall', 'paypai', 'paypaI'],
+            'netflix': ['netflik', 'netflx', 'netflix-']
+        }
+        
+        for brand, typos in common_brands.items():
+            if any(typo in hostname.lower() for typo in typos) and brand not in hostname.lower():
+                details.append(f"URL may be attempting to mimic {brand.capitalize()} (possible typosquatting).")
+                break
+        
+        # 11. Check for excessive URL length
+        if len(url) > 100:
+            details.append(f"URL is unusually long ({len(url)} characters), which can be suspicious.")
 
     except Exception as e:
         print(f"Error during URL analysis: {e}")
@@ -279,7 +345,20 @@ def get_domain_info(url: str) -> List[str]:
                 else:
                     details.append(f"Domain is well established (created {domain_age_days} days ago).")
                 
-                details.append(f"Domain registered to: {domain_info.registrar or 'Unknown'}")
+                # Add registrar information
+                if domain_info.registrar:
+                    details.append(f"Domain registered to: {domain_info.registrar}")
+                
+                # Add expiration date if available
+                if domain_info.expiration_date:
+                    expiry_date = domain_info.expiration_date
+                    if isinstance(expiry_date, list):
+                        expiry_date = expiry_date[0]
+                    days_to_expiry = (expiry_date - datetime.now()).days
+                    if days_to_expiry < 30:
+                        details.append(f"Domain is expiring soon (in {days_to_expiry} days) - potentially suspicious.")
+                    else:
+                        details.append(f"Domain expires in {days_to_expiry} days.")
         except Exception as e:
             print(f"WHOIS lookup failed: {e}")
         
@@ -287,9 +366,24 @@ def get_domain_info(url: str) -> List[str]:
         try:
             ip_address = socket.gethostbyname(domain)
             details.append(f"Domain resolves to IP: {ip_address}")
+            
+            # Check if IP is in known suspicious ranges
+            suspicious_ip_ranges = [
+                ('192.168.', 'Private network'),
+                ('10.', 'Private network'),
+                ('172.16.', 'Private network'),
+                ('127.', 'Localhost'),
+                ('169.254.', 'Link-local')
+            ]
+            
+            for ip_range, range_type in suspicious_ip_ranges:
+                if ip_address.startswith(ip_range):
+                    details.append(f"IP address is in {range_type} range - highly suspicious for a public website.")
+                    break
         except:
             details.append("Could not resolve domain to an IP address - potentially suspicious.")
-          # 3. SSL Certificate Check
+        
+        # 3. SSL Certificate Check
         if parsed_url.scheme == 'https':
             try:
                 context = ssl.create_default_context()
@@ -306,11 +400,33 @@ def get_domain_info(url: str) -> List[str]:
                             
                             details.append(f"SSL Certificate issued to: {cn_subject}")
                             details.append(f"SSL Certificate issued by: {cn_issuer}")
+                            
+                            # Verify certificate match with domain
+                            if domain != cn_subject and not (cn_subject.startswith('*.') and domain.endswith(cn_subject[2:])):
+                                details.append(f"SSL Certificate domain mismatch: {cn_subject} vs {domain} - potentially suspicious.")
+                            
+                            # Check certificate validity
+                            if 'notBefore' in cert and 'notAfter' in cert:
+                                not_before = ssl.cert_time_to_seconds(cert['notBefore'])
+                                not_after = ssl.cert_time_to_seconds(cert['notAfter'])
+                                current_time = time.time()
+                                
+                                if current_time < not_before:
+                                    details.append("SSL Certificate is not yet valid - potentially suspicious.")
+                                elif current_time > not_after:
+                                    details.append("SSL Certificate has expired - potentially suspicious.")
+                                else:
+                                    days_remaining = (not_after - current_time) / (24 * 3600)
+                                    if days_remaining < 30:
+                                        details.append(f"SSL Certificate expires soon (in {int(days_remaining)} days).")
+                                    else:
+                                        details.append(f"SSL Certificate is valid for {int(days_remaining)} more days.")
             except Exception as e:
                 details.append("SSL certificate validation failed - potentially suspicious.")
+                print(f"SSL validation error: {e}")
         
         # 4. Check reputation with VirusTotal API (if you have an API key)
-        if config.VIRUSTOTAL_API_KEY:  # Assume you have this in your config
+        if hasattr(config, 'VIRUSTOTAL_API_KEY') and config.VIRUSTOTAL_API_KEY:
             try:
                 api_url = f"https://www.virustotal.com/api/v3/domains/{domain}"
                 headers = {"x-apikey": config.VIRUSTOTAL_API_KEY}
@@ -324,6 +440,31 @@ def get_domain_info(url: str) -> List[str]:
                         details.append(f"Domain has positive reputation score ({reputation}) from VirusTotal.")
             except Exception as e:
                 print(f"VirusTotal API error: {e}")
+        
+        # 5. Additional checks for popular legitimate domains
+        popular_domains = [
+            'google.com', 'facebook.com', 'amazon.com', 'microsoft.com', 'apple.com',
+            'youtube.com', 'twitter.com', 'instagram.com', 'linkedin.com', 'netflix.com',
+            'github.com', 'stackoverflow.com', 'wikipedia.org', 'yahoo.com', 'reddit.com'
+        ]
+        
+        domain_without_prefix = domain
+        if domain.startswith('www.'):
+            domain_without_prefix = domain[4:]
+            
+        if domain_without_prefix in popular_domains:
+            details.append(f"Domain is a well-known legitimate website ({domain_without_prefix}).")
+        
+        # 6. Check for suspicious domain patterns
+        suspicious_patterns = [
+            '-security', '-login', '-account', '-update', '-verify', 
+            'secure-', 'login-', 'account-', 'update-', 'verify-'
+        ]
+        
+        for pattern in suspicious_patterns:
+            if pattern in domain_without_prefix:
+                details.append(f"Domain contains suspicious pattern '{pattern}' - potentially deceptive.")
+                break
                 
     except Exception as e:
         print(f"Error gathering domain information: {e}")

@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 from starlette.requests import Request # Correct import
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.v1 import predict as predict_v1, history as history_v1, profile as profile_v1
+from app.api.v1 import predict as predict_v1, history as history_v1, profile as profile_v1, analyze as analyze_v1
 from transformers import BertForSequenceClassification, BertTokenizer
 import os
 import torch
@@ -76,6 +76,7 @@ async def startup_event():
 app.include_router(predict_v1.router, prefix="/api/v1/predict", tags=["Prediction v1"])
 app.include_router(history_v1.router, prefix="/api/v1/history", tags=["History v1"])
 app.include_router(profile_v1.router, prefix="/api/v1/profile", tags=["Profile v1"])
+app.include_router(analyze_v1.router, prefix="/api/v1/analyze-url", tags=["URL Analysis v1"])
 
 # Include our new detailed factors endpoint
 from app.api.endpoints import predict as predict_detailed

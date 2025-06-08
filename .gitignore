@@ -79,6 +79,11 @@ backend/ml_models/phishing-url-detector/training_args.bin
 backend/.env
 frontend/.env
 
+# Mock and deprecated files
+frontend/src/pages/MockLoginPage.jsx
+frontend/src/pages/MockProfilePage.jsx
+frontend/src/context/AuthContext.jsx.deprecated
+
 # Logs
 *.log
 npm-debug.log*
