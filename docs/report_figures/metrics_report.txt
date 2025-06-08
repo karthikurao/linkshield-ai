@@ -1,0 +1,35 @@
+URL Phishing Detection Model Evaluation
+=====================================
+
+Number of test samples: 169282
+Class distribution: {0: 108606, 1: 60676}
+
+Accuracy: 0.6420
+Precision: 0.9762
+Recall: 0.0014
+F1 Score: 0.0027
+ROC AUC: 0.5012
+Average Precision: 0.3599
+
+Optimal threshold for F1: 0.10 (F1 = 0.5277)
+
+Detailed Classification Report:
+              precision    recall  f1-score   support
+
+      Benign       0.64      1.00      0.78    108606
+    Phishing       0.98      0.00      0.00     60676
+
+    accuracy                           0.64    169282
+   macro avg       0.81      0.50      0.39    169282
+weighted avg       0.76      0.64      0.50    169282
+
+Confusion Matrix:
+TN: 108604, FP: 2
+FN: 60594, TP: 82
+
+URL Statistics:
+Average URL length: 49.24
+Average URL length (Benign): 55.01
+Average URL length (Phishing): 38.91
+Average special character ratio: 0.1595
+Average digit ratio: 0.0608

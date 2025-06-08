@@ -71,6 +71,13 @@ ml_training/dataset/*.csv
 ml_training/models/*.pt
 ml_training/models/*.pth
 ml_training/models/*.bin
+backend/ml_models/phishing-url-detector/*.safetensors
+backend/ml_models/phishing-url-detector/training_args.bin
+
+# Environment variables
+.env
+backend/.env
+frontend/.env
 
 # Logs
 *.log

@@ -39,43 +39,39 @@ LinkShield AI is an advanced cybersecurity solution that uses machine learning t
 
 ## Version Information
 
-**Current Version**: 1.0
+**Current Version**: 1.0.1
 **Release Date**: June 8, 2025
 **Status**: Stable Release
 
 ### Release Notes
-- Initial stable release
-- Complete AWS Amplify authentication integration
+- Implemented fallback prediction mechanism when ML model is unavailable
+- Enhanced error handling and improved system resilience
+- Fixed DynamoDB scan history format
+- Initial stable release with complete AWS Amplify authentication integration
 - Optimized repository size and structure
 - Full documentation
 
-## Installation and Setup
+## Getting Started
 
 ### Prerequisites
-- Node.js 18+ and npm
-- Python 3.11+
-- AWS CLI configured (for deployment)
-- Git
+- Node.js 16+
+- Python 3.8+
+- AWS Account (for production deployment)
 
-For detailed setup instructions, see [SETUP.md](SETUP.md).
+### Quick Start
+1. Clone the repository
+2. Install frontend dependencies: `cd frontend && npm install`
+3. Install backend dependencies: `cd backend && pip install -r requirements.txt`
+4. Start the backend: `cd backend && uvicorn app.main:app --reload`
+5. Start the frontend: `cd frontend && npm run dev`
 
-### Backend Setup
+### Missing ML Model?
+The application will automatically use a rule-based fallback mechanism if the ML model files are missing:
 
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/linkshield-ai.git
-cd linkshield-ai/backend
+1. Check model status: Visit `http://localhost:8000/health` to verify
+2. Test fallback: Run `python backend/test_fallback.py` to test the fallback mechanism
 
-# Create and activate virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run locally
-uvicorn app.main:app --reload
-```
+See [Fallback Mechanism Documentation](docs/fallback_mechanism.md) for more details.
 
 ### Frontend Setup
 

@@ -8,7 +8,7 @@ import boto3
 from decimal import Decimal
 import os
 from datetime import datetime, timezone
-from typing import List
+from typing import List, Optional
 from urllib.parse import urlparse
 import re
 import socket
@@ -30,23 +30,192 @@ except Exception as e:
     dynamodb = cognito_client = scan_history_table = None
 
 
-# --- NEW: Advanced URL Feature Analysis for Explainability ---
+# --- NEW: Fallback Prediction Function ---
+def get_fallback_prediction(url: str, user_id: Optional[str] = None) -> URLScanResponse:
+    """
+    Provides a fallback prediction when the ML model is not available.
+    Uses rule-based heuristics to estimate phishing likelihood.
+    """
+    print(f"Using fallback prediction for URL: {url}")
+    parsed_url = urlparse(url)
+    hostname = parsed_url.hostname or ""
+    path = parsed_url.path
+    query = parsed_url.query
+    
+    # Initialize score (0-100)
+    risk_score = 50  # Start with neutral score
+    risk_factors = []
+    details = []
+    
+    # Analyze URL components
+    
+    # 1. Check if uses HTTPS
+    if parsed_url.scheme != 'https':
+        risk_score += 10
+        risk_factors.append({
+            "name": "Insecure Protocol", 
+            "impact": "medium", 
+            "description": "Uses HTTP instead of secure HTTPS connection"
+        })
+        details.append("Uses insecure HTTP protocol instead of HTTPS.")
+    
+    # 2. Check for suspicious TLD
+    suspicious_tlds = ['.xyz', '.tk', '.top', '.club', '.gq', '.ml', '.ga', '.cf', '.info']
+    if any(hostname.endswith(tld) for tld in suspicious_tlds):
+        risk_score += 15
+        risk_factors.append({
+            "name": "Suspicious TLD", 
+            "impact": "high", 
+            "description": f"Uses suspicious top-level domain: {parsed_url.netloc.split('.')[-1]}"
+        })
+        details.append(f"Uses potentially suspicious top-level domain: {parsed_url.netloc.split('.')[-1]}")
+    
+    # 3. Check for IP address as hostname
+    if re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", hostname):
+        risk_score += 20
+        risk_factors.append({
+            "name": "IP Address URL", 
+            "impact": "high", 
+            "description": "Uses an IP address instead of a domain name"
+        })
+        details.append("URL uses an IP address instead of a domain name (highly suspicious).")
+    
+    # 4. Check for excessive subdomains
+    subdomain_count = len(hostname.split('.')) - 2 if hostname and len(hostname.split('.')) > 2 else 0
+    if subdomain_count > 3:
+        risk_score += 10
+        risk_factors.append({
+            "name": "Many Subdomains", 
+            "impact": "medium", 
+            "description": f"Contains an unusual number of subdomains ({subdomain_count})"
+        })
+        details.append(f"Contains {subdomain_count} subdomains, which can be a sign of obfuscation.")
+    
+    # 5. Check for long hostname
+    if len(hostname) > 30:
+        risk_score += 5
+        risk_factors.append({
+            "name": "Long Domain", 
+            "impact": "low", 
+            "description": f"Domain name is unusually long ({len(hostname)} characters)"
+        })
+        details.append(f"Domain name is unusually long ({len(hostname)} characters).")
+    
+    # 6. Check for suspicious words in hostname
+    suspicious_words = ['secure', 'login', 'verify', 'account', 'banking', 'update', 'confirm']
+    found_words = [word for word in suspicious_words if word in hostname.lower()]
+    if found_words:
+        risk_score += len(found_words) * 5
+        risk_factors.append({
+            "name": "Suspicious Keywords", 
+            "impact": "medium", 
+            "description": f"Domain contains potentially deceptive terms: {', '.join(found_words)}"
+        })
+        details.append(f"URL contains potentially sensitive keywords: {', '.join(found_words)}.")
+    
+    # 7. Check for special characters in hostname
+    if re.search(r"[^\w\-\.]", hostname):
+        risk_score += 15
+        risk_factors.append({
+            "name": "Special Characters", 
+            "impact": "high", 
+            "description": "URL contains unusual special characters"
+        })
+        details.append("URL contains unusual special characters, which can be used for deception.")
+    
+    # 8. Check path length
+    if len(path) > 100:
+        risk_score += 5
+        risk_factors.append({
+            "name": "Long Path", 
+            "impact": "low", 
+            "description": f"URL path is unusually long ({len(path)} characters)"
+        })
+        details.append(f"URL path is excessively long ({len(path)} characters).")
+    
+    # 9. Check for excessive query parameters
+    query_params = query.split('&') if query else []
+    if len(query_params) > 10:
+        risk_score += 5
+        risk_factors.append({
+            "name": "Many Parameters", 
+            "impact": "low", 
+            "description": f"URL contains many query parameters ({len(query_params)})"
+        })
+        details.append(f"URL contains many query parameters ({len(query_params)}).")
+    
+    # Get additional domain information if available
+    try:
+        domain_info = get_domain_info(url)
+        if domain_info:
+            details.extend(domain_info)
+    except Exception as e:
+        print(f"Error getting domain info: {e}")
+    
+    # Cap the score at 100
+    risk_score = min(risk_score, 100)
+    
+    # Determine risk level based on score
+    if risk_score < 30:
+        risk_level = "low"
+        status = "benign"
+    elif risk_score < 70:
+        risk_level = "medium"
+        status = "suspicious"
+    else:
+        risk_level = "high"
+        status = "malicious"
+    
+    # Add note that this is a fallback prediction
+    details.append("Note: This prediction was made using fallback heuristics as the ML model is currently unavailable.")
+    
+    # Create scan_id and timestamp
+    scan_id = str(uuid.uuid4())
+    scan_timestamp = datetime.now(timezone.utc).isoformat()
+    
+    # Create result
+    result = URLScanResponse(
+        url=url,
+        scan_id=scan_id,
+        status=status,
+        message=f"URL classified as {status.upper()} using fallback detection.",
+        confidence=risk_score / 100,  # Convert to 0-1 range
+        model_version="linkshield-fallback-v1.0",
+        details=details,
+        user_id=user_id,
+        scan_timestamp=scan_timestamp
+    )
+      # Save scan to history if user is authenticated
+    if user_id and scan_history_table:
+        try:
+            # Store the scan result in the history table
+            item = {                'scan_id': result.scan_id,
+                'user_id': user_id,
+                'url': result.url,
+                'status': result.status,
+                'confidence': Decimal(str(result.confidence)),
+                'scan_timestamp': result.scan_timestamp,
+                'risk_level': risk_level,
+                'risk_score': Decimal(str(risk_score))
+            }
+            scan_history_table.put_item(Item=item)
+            print(f"Stored scan in history for user {user_id}: {result.scan_id}")
+        except Exception as e:
+            print(f"Error storing scan in history: {e}")
+    
+    return result
+
 def analyze_url_for_details(url: str) -> List[str]:
-    """
-    Performs a lexical and structural analysis of the URL to generate human-readable details.
-    """
+    """Analyzes a URL for phishing indicators and returns detailed explanations."""
     details = []
     try:
         parsed_url = urlparse(url)
-        hostname = parsed_url.hostname or ""
-        path = parsed_url.path
-
-        # 1. HTTPS Usage
-        if parsed_url.scheme == 'https':
-            details.append("Uses a secure connection (HTTPS).")
-        else:
-            details.append("Does not use a secure HTTPS connection.")
-
+        hostname = parsed_url.netloc
+        
+        # 1. HTTPS Check
+        if parsed_url.scheme != 'https':
+            details.append("Uses insecure HTTP protocol instead of HTTPS.")
+        
         # 2. IP Address as Hostname
         if re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", hostname):
             details.append("URL hostname is a raw IP address (Suspicious).")
@@ -120,19 +289,23 @@ def get_domain_info(url: str) -> List[str]:
             details.append(f"Domain resolves to IP: {ip_address}")
         except:
             details.append("Could not resolve domain to an IP address - potentially suspicious.")
-        
-        # 3. SSL Certificate Check
+          # 3. SSL Certificate Check
         if parsed_url.scheme == 'https':
             try:
                 context = ssl.create_default_context()
                 with socket.create_connection((domain, 443)) as sock:
                     with context.wrap_socket(sock, server_hostname=domain) as ssock:
                         cert = ssock.getpeercert()
-                        issued_to = dict(x[0] for x in cert['subject'])
-                        issued_by = dict(x[0] for x in cert['issuer'])
-                        
-                        details.append(f"SSL Certificate issued to: {issued_to.get('commonName', 'Unknown')}")
-                        details.append(f"SSL Certificate issued by: {issued_by.get('commonName', 'Unknown')}")
+                        if cert and 'subject' in cert:
+                            subject_parts = dict(x[0] for x in cert.get('subject', []))
+                            issuer_parts = dict(x[0] for x in cert.get('issuer', []))
+                            
+                            # Access the common name more safely
+                            cn_subject = subject_parts.get('commonName', 'Unknown')
+                            cn_issuer = issuer_parts.get('commonName', 'Unknown')
+                            
+                            details.append(f"SSL Certificate issued to: {cn_subject}")
+                            details.append(f"SSL Certificate issued by: {cn_issuer}")
             except Exception as e:
                 details.append("SSL certificate validation failed - potentially suspicious.")
         
@@ -383,3 +556,6 @@ def confirm_forgot_password(username: str, confirmation_code: str, new_password:
     except Exception as e:
         print(f"Error confirming password reset: {e}")
         raise HTTPException(status_code=500, detail=f"Could not reset password: {str(e)}")
+
+# This part of the file was removed because it was a duplicate function
+# The get_fallback_prediction function is already defined earlier in the file
