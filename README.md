@@ -1,4 +1,4 @@
-# LinkShield AI - Advanced Phishing URL Detection
+# LinkShield AI - Advanced Phishing URL Detection v1.0
 
 ![LinkShield AI Logo](https://via.placeholder.com/150x150?text=LinkShield+AI)
 
@@ -36,6 +36,18 @@ LinkShield AI is an advanced cybersecurity solution that uses machine learning t
 - PyTorch
 - BERT-based model fine-tuned for URL classification
 - Custom training pipeline
+
+## Version Information
+
+**Current Version**: 1.0
+**Release Date**: June 8, 2025
+**Status**: Stable Release
+
+### Release Notes
+- Initial stable release
+- Complete AWS Amplify authentication integration
+- Optimized repository size and structure
+- Full documentation
 
 ## Installation and Setup
 

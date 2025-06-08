@@ -67,6 +67,7 @@ out/
 
 # ML training data (consider git LFS if needed)
 ml_training/dataset/*.csv
+!ml_training/dataset/*sample*.csv
 ml_training/models/*.pt
 ml_training/models/*.pth
 ml_training/models/*.bin
