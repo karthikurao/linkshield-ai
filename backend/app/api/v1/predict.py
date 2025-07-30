@@ -5,8 +5,10 @@ from starlette.exceptions import HTTPException # Import from starlette
 from starlette import status # Import from starlette
 from app.models.url import URLScanRequest, URLScanResponse, ErrorResponse
 from app.services.app_service import run_prediction, get_fallback_prediction
+from app.database import ScanDatabase
 # Assuming auth_utils is also updated as per previous instructions
 from .auth_utils import get_current_user_sub 
+from typing import Optional
 
 router = APIRouter()
 
@@ -24,7 +26,7 @@ router = APIRouter()
 async def scan_url_endpoint(
     request_data: URLScanRequest, 
     request: Request,
-    user_id: str = Depends(get_current_user_sub) # Protect the endpoint
+    user_id: Optional[str] = Depends(get_current_user_sub) # Make user_id optional for guest scans
 ):
     model = request.app.state.model
     tokenizer = request.app.state.tokenizer
@@ -38,11 +40,30 @@ async def scan_url_endpoint(
         print(f"Model not available, using fallback prediction: {model_load_error}")
         # Instead of raising an exception, use a fallback mechanism
         fallback_result = get_fallback_prediction(url_to_scan, user_id)
+        
+        # Save scan result to database
+        if user_id:
+            ScanDatabase.save_scan(
+                user_id=user_id,
+                url=url_to_scan,
+                result=fallback_result.status,
+                confidence=fallback_result.confidence
+            )
+        
         # Log that we're using fallback
         print(f"Fallback prediction for {url_to_scan}: {fallback_result.status} with confidence {fallback_result.confidence}")
         return fallback_result
     
     # If model is available, use it
     prediction_result = run_prediction(url_to_scan, model, tokenizer, device, user_id)
+    
+    # Save scan result to database
+    if user_id:
+        ScanDatabase.save_scan(
+            user_id=user_id,
+            url=url_to_scan,
+            result=prediction_result.status,
+            confidence=prediction_result.confidence
+        )
     
     return prediction_result

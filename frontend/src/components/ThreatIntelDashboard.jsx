@@ -9,11 +9,10 @@ const ThreatIntelDashboard = () => {
   
   useEffect(() => {
     const fetchThreatIntelligence = async () => {
-      try {
-        setLoading(true);
+      try {        setLoading(true);
         
         // API call to get threat intelligence data based on filter
-        const response = await fetch(`${API_BASE_URL}/threat-intel?timeframe=${filter}`);
+        const response = await fetch(`${API_BASE_URL}/api/v1/threat-intel?timeframe=${filter}`);
         
         if (!response.ok) {
           throw new Error('Failed to fetch threat intelligence data');

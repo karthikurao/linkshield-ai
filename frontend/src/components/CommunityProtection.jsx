@@ -1,6 +1,6 @@
 // frontend/src/components/CommunityProtection.jsx
 import React, { useState, useEffect } from 'react';
-import { useAuthenticator } from '@aws-amplify/ui-react';
+import { useAuth } from '../context/AuthContext';
 import { getCommunityReportsApi, submitCommunityReportApi } from '../services/api';
 
 const CommunityProtection = () => {
@@ -12,8 +12,8 @@ const CommunityProtection = () => {
   const [reportFilter, setReportFilter] = useState('all'); // 'all', 'pending', 'confirmed'
   const [userVotes, setUserVotes] = useState({});
   
-  const { authStatus } = useAuthenticator(context => [context.authStatus]);
-  const isAuthenticated = authStatus === 'authenticated';
+  const { user } = useAuth();
+  const isAuthenticated = !!user;
   
   const fetchCommunityData = async () => {
     try {

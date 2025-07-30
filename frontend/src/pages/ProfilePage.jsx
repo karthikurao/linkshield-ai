@@ -1,58 +1,26 @@
 // frontend/src/pages/ProfilePage.jsx
 import React, { useState, useEffect } from 'react';
-import { useAuthenticator } from '@aws-amplify/ui-react';
+import { useAuth } from '../context/AuthContext';
 import { UserCircleIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
 import { updateUserProfileApi } from '../services/api';
-import { fetchUserAttributes, updateUserAttributes } from 'aws-amplify/auth';
 
 const ProfilePage = () => {
-    const { user, userConfig } = useAuthenticator((context) => [context.user, context.userConfig]);
+    const { user } = useAuth();
     
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState({ name: '', email: '' });
     const [isLoading, setIsLoading] = useState(false); // For save button loading state
     const [error, setError] = useState(''); // For displaying errors from the API
     const [successMessage, setSuccessMessage] = useState(''); // For showing success feedback
-    const [localUserData, setLocalUserData] = useState(null);
 
     useEffect(() => {
-        if (user?.attributes) {
+        if (user) {
             setFormData({ 
-                name: user.attributes.name || '',
-                email: user.attributes.email || ''
+                name: user.name || '',
+                email: user.email || ''
             });
         }
-    }, [user]);    // This function will fetch the latest user attributes
-    const refreshUserAttributes = async () => {
-        try {
-            const attributes = await fetchUserAttributes();
-            if (attributes) {
-                setFormData(prev => ({
-                    ...prev,
-                    name: attributes.name || prev.name,
-                    email: attributes.email || prev.email
-                }));
-            }
-        } catch (error) {
-            console.error('Error refreshing user attributes:', error);
-        }
-    };    // Refresh user attributes when the component mounts
-    useEffect(() => {
-        refreshUserAttributes();
-        
-        // Also refresh when the page becomes visible again after being hidden
-        const handleVisibilityChange = () => {
-            if (document.visibilityState === 'visible') {
-                refreshUserAttributes();
-            }
-        };
-        
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-        
-        return () => {
-            document.removeEventListener('visibilitychange', handleVisibilityChange);
-        };
-    }, []);
+    }, [user]);
 
     const handleInputChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -63,47 +31,14 @@ const ProfilePage = () => {
         setSuccessMessage('');
 
         try {
-            // This is the AWS Amplify way to update attributes.
-            // This call updates Cognito directly from the frontend.
-            const result = await updateUserAttributes({
-                userAttributes: {
-                    name: formData.name,
-                    email: formData.email,
-                },
+            // Send update to our backend API
+            await updateUserProfileApi({
+                name: formData.name,
+                email: formData.email
             });
-            console.log('Amplify update result:', result);
             
-            // Also send update to our backend API to ensure consistency
-            try {
-                await updateUserProfileApi({
-                    name: formData.name,
-                    email: formData.email
-                });
-            } catch (apiError) {
-                console.warn('Backend API sync failed, but Cognito update succeeded:', apiError);
-            }
-              // Fetch fresh user attributes to update the display immediately
-            try {
-                const freshAttributes = await fetchUserAttributes();
-                // Update our form data with the freshly fetched attributes
-                setFormData({
-                    name: freshAttributes.name || '',
-                    email: freshAttributes.email || ''
-                });
-                
-                // Create a custom event to trigger UI updates elsewhere in the app
-                const updateEvent = new CustomEvent('user-attributes-updated', { 
-                    detail: { attributes: freshAttributes } 
-                });
-                window.dispatchEvent(updateEvent);
-                
-                // Show success message
-                setSuccessMessage('Profile updated successfully!');
-            } catch (fetchError) {
-                console.warn('Could not refresh user attributes:', fetchError);
-                setSuccessMessage('Profile updated successfully! Changes will be reflected shortly.');
-            }
-            
+            // Show success message
+            setSuccessMessage('Profile updated successfully!');
             setIsEditing(false);
 
         } catch (err) {
@@ -112,11 +47,11 @@ const ProfilePage = () => {
         } finally {
             setIsLoading(false);
         }
-    };const handleCancel = () => {
-        if (user?.attributes) {
+    };    const handleCancel = () => {
+        if (user) {
             setFormData({ 
-                name: user.attributes.name || '',
-                email: user.attributes.email || ''
+                name: user.name || '',
+                email: user.email || ''
             });
         }
         setIsEditing(false);

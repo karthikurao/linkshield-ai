@@ -1,7 +1,8 @@
 // frontend/src/App.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeProvider';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { useTheme } from './hooks/useTheme';
 import Header from './components/Header';
 import URLInputForm from './components/URLInputForm';
@@ -15,15 +16,12 @@ import { scanUrlApi, getFactorAnalysisApi } from './services/api';
 // CSS imports
 import './components/AdvancedFeatures.css';
 
-// AWS Amplify Authentication
-import { Authenticator, useAuthenticator } from '@aws-amplify/ui-react';
-
 // A special component to protect routes that require authentication
 const ProtectedRoute = ({ children }) => {
     const location = useLocation();
-    const { authStatus } = useAuthenticator(context => [context.authStatus]);
+    const { isAuthenticated } = useAuth();
     
-    if (authStatus !== 'authenticated') {
+    if (!isAuthenticated) {
         // Redirect to login page if not authenticated
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
@@ -36,8 +34,7 @@ const ProtectedRoute = ({ children }) => {
 // MainApp now only contains the page content, without auth logic
 const AppContent = () => {
   const { overlayStyle } = useTheme();
-  const { user, authStatus } = useAuthenticator(context => [context.user, context.authStatus]);
-  const isAuthenticated = authStatus === 'authenticated';
+  const { isAuthenticated } = useAuth();
 
   const [scanResult, setScanResult] = useState({ status: 'idle' });
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -145,9 +142,9 @@ function App() {
   return (
     <ThemeProvider>
       <Router>
-        <Authenticator.Provider>
+        <AuthProvider>
           <AppContent />
-        </Authenticator.Provider>
+        </AuthProvider>
       </Router>
     </ThemeProvider>
   );

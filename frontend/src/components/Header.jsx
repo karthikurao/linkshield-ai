@@ -1,19 +1,19 @@
 // frontend/src/components/Header.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import ThemeToggleButton from './ThemeToggleButton';
-import { Link } from 'react-router-dom';
-import { useAuthenticator } from '@aws-amplify/ui-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { UserCircleIcon, Cog6ToothIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
 
 const Header = () => {
-    const { user, signOut, authStatus } = useAuthenticator(context => [context.user, context.signOut, context.authStatus]);
-    const isAuthenticated = authStatus === 'authenticated';
+    const { user, isAuthenticated, signOut } = useAuth();
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const dropdownRef = useRef(null);
+    const navigate = useNavigate();
 
     const getDisplayName = () => {
         if (!user) return 'User';
-        return user.username || user.attributes?.email || 'User';
+        return user.name || user.email || 'User';
     };
 
     useEffect(() => {
@@ -69,8 +69,17 @@ const Header = () => {
                                         <Link to="/profile" onClick={() => setDropdownOpen(false)} className="w-full text-left text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 group flex items-center px-4 py-2 text-sm">
                                             <Cog6ToothIcon className="mr-3 h-5 w-5 text-slate-400" />
                                             Profile Settings
-                                        </Link>
-                                        <button onClick={() => { setDropdownOpen(false); signOut(); }} className="w-full text-left text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 group flex items-center px-4 py-2 text-sm">
+                                        </Link>                                        <button onClick={async () => {
+                                            setDropdownOpen(false);
+                                            try {
+                                                await signOut();
+                                                // Navigate to home page after sign out
+                                                navigate('/');
+                                                console.log('User signed out successfully');
+                                            } catch (error) {
+                                                console.error('Error signing out:', error);
+                                            }
+                                        }} className="w-full text-left text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 group flex items-center px-4 py-2 text-sm">
                                             <ArrowRightOnRectangleIcon className="mr-3 h-5 w-5 text-slate-400" />
                                             Sign Out
                                         </button>

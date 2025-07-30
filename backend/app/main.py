@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from starlette.requests import Request # Correct import
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1 import predict as predict_v1, history as history_v1, profile as profile_v1, analyze as analyze_v1
+from app.api.v1 import community, examples, threat_intel, auth
 from transformers import BertForSequenceClassification, BertTokenizer
 import os
 import torch
@@ -77,6 +78,14 @@ app.include_router(predict_v1.router, prefix="/api/v1/predict", tags=["Predictio
 app.include_router(history_v1.router, prefix="/api/v1/history", tags=["History v1"])
 app.include_router(profile_v1.router, prefix="/api/v1/profile", tags=["Profile v1"])
 app.include_router(analyze_v1.router, prefix="/api/v1/analyze-url", tags=["URL Analysis v1"])
+
+# Add authentication router
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
+
+# Add new routers for community features
+app.include_router(community.router, prefix="/api/v1/community-reports", tags=["Community Reports"])
+app.include_router(examples.router, prefix="/api/v1/phishing-examples", tags=["Phishing Examples"])
+app.include_router(threat_intel.router, prefix="/api/v1/threat-intel", tags=["Threat Intelligence"])
 
 # Include our new detailed factors endpoint
 from app.api.endpoints import predict as predict_detailed

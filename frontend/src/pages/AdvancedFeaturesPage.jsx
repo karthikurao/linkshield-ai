@@ -5,13 +5,13 @@ import BrowserExtensionPromo from '../components/BrowserExtensionPromo';
 import PhishingSimulator from '../components/PhishingSimulator';
 import ThreatIntelDashboard from '../components/ThreatIntelDashboard';
 import CommunityProtection from '../components/CommunityProtection';
-import { useAuthenticator } from '@aws-amplify/ui-react';
+import { useAuth } from '../context/AuthContext';
 import { getFactorAnalysisApi } from '../services/api';
 
 const AdvancedFeaturesPage = () => {
   const [activeTab, setActiveTab] = useState('threatIntel');
-  const { authStatus } = useAuthenticator(context => [context.authStatus]);
-  const isAuthenticated = authStatus === 'authenticated';
+  const { user } = useAuth();
+  const isAuthenticated = !!user;
   
   // URL Risk Visualizer configuration
   const [url, setUrl] = useState('');

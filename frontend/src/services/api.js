@@ -1,22 +1,34 @@
 // frontend/src/services/api.js
-import { Amplify } from 'aws-amplify'; 
-import { fetchAuthSession } from 'aws-amplify/auth';
+import axios from 'axios';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
+// Create axios instance for authentication
+export const api = axios.create({
+  baseURL: API_BASE_URL + '/api/v1',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Helper function to get auth token from localStorage
+const getAuthToken = () => {
+  const token = localStorage.getItem('authToken');
+  return token;
+};
+
 // EXISTING SCAN API FUNCTIONS
 export const scanUrlApi = async (urlToScan) => {
-  const endpoint = `${API_BASE_URL}/api/v1/predict`;
+  const endpoint = `${API_BASE_URL}/api/v1/predict/`;
   try {
-    // Get the current auth session (tokens)
-    const session = await fetchAuthSession();
-    const idToken = session.tokens?.idToken?.toString();
+    // Get the current auth token from localStorage
+    const token = getAuthToken();
     
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
-        'Authorization': idToken ? `Bearer ${idToken}` : undefined // Add auth token if available
+        'Authorization': token ? `Bearer ${token}` : undefined // Add auth token if available
       },
       body: JSON.stringify({ url: urlToScan }),
     });
@@ -42,13 +54,12 @@ export const getThreatIntelligenceApi = async (timeframe = 'all') => {
   const endpoint = `${API_BASE_URL}/api/v1/threat-intel?timeframe=${timeframe}`;
   
   try {
-    const session = await fetchAuthSession();
-    const idToken = session.tokens?.idToken?.toString();
+    const token = getAuthToken();
     
     const response = await fetch(endpoint, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${idToken}`
+        'Authorization': `Bearer ${token}`
       }
     });
     
@@ -72,13 +83,12 @@ export const getCommunityReportsApi = async (filter = 'all') => {
   const endpoint = `${API_BASE_URL}/api/v1/community-reports?filter=${filter}`;
   
   try {
-    const session = await fetchAuthSession();
-    const idToken = session.tokens?.idToken?.toString();
+    const token = getAuthToken();
     
     const response = await fetch(endpoint, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${idToken}`
+        'Authorization': `Bearer ${token}`
       }
     });
     
@@ -102,14 +112,13 @@ export const submitCommunityReportApi = async (reportData) => {
   const endpoint = `${API_BASE_URL}/api/v1/community-reports`;
   
   try {
-    const session = await fetchAuthSession();
-    const idToken = session.tokens?.idToken?.toString();
+    const token = getAuthToken();
     
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${idToken}`
+        'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify(reportData)
     });
@@ -129,12 +138,11 @@ export const getHistoryApi = async (limit = 10) => {
     // ... (no changes to this function)
   const endpoint = `${API_BASE_URL}/api/v1/history?limit=${limit}`;
   try {
-    const session = await fetchAuthSession();
-    const idToken = session.tokens?.idToken?.toString();
+    const token = getAuthToken();
     const response = await fetch(endpoint, { 
         method: 'GET',
         headers: {
-            'Authorization': `Bearer ${idToken}` // Add auth token to history calls
+            'Authorization': `Bearer ${token}` // Add auth token to history calls
         }
     });
     if (response.ok) return await response.json();
@@ -154,10 +162,9 @@ export const updateUserProfileApi = async (profileData) => {
 
   try {
     // Get the current user's session token to authorize the request
-    const session = await fetchAuthSession();
-    const idToken = session.tokens?.idToken?.toString();
+    const token = getAuthToken();
 
-    if (!idToken) {
+    if (!token) {
       throw new Error("User session not found. Please log in again.");
     }    // Filter out any empty or undefined values before sending
     const cleanData = {};
@@ -176,7 +183,7 @@ export const updateUserProfileApi = async (profileData) => {
       method: 'PUT', // Use PUT for updating resources
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${idToken}` // Send the token in the Authorization header
+        'Authorization': `Bearer ${token}` // Send the token in the Authorization header
       },
       body: JSON.stringify(cleanData),
     });
@@ -205,12 +212,11 @@ export const getFactorAnalysisApi = async (urlToScan) => {
     let headers = { 'Content-Type': 'application/json' };
     
     try {
-      const session = await fetchAuthSession();
-      const idToken = session.tokens?.idToken?.toString();
-      if (idToken) {
-        headers['Authorization'] = `Bearer ${idToken}`;
+      const token = getAuthToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
       }
-    } catch (authError) {
+    } catch {
       console.log('No authenticated session, proceeding as guest');
     }
     

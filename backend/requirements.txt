@@ -1,7 +1,7 @@
 # backend/requirements.txt
 fastapi
 uvicorn[standard]
-pydantic
+pydantic[email]
 python-dotenv
 torch
 transformers
@@ -9,3 +9,10 @@ boto3
 mangum 
 python-jose[cryptography]
 python-whois
+pytest
+pytest-cov
+httpx
+python-jwt
+PyJWT
+bcrypt
+requests

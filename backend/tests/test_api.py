@@ -139,3 +139,20 @@ def test_expired_token():
     )
     assert response.status_code == 401
     assert response.json()["detail"] == "Token has expired"
+
+def test_analyze_url():
+    """Test the analyze URL endpoint"""
+    response = client.get(
+        "/api/v1/analyze-url/",
+        params={"url": "https://example.com"}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "url" in data
+    assert data["url"] == "https://example.com"
+    assert "status" in data
+    assert "confidence" in data
+    assert "riskScore" in data
+    assert "riskLevel" in data
+    assert "riskFactors" in data
+    assert isinstance(data["riskFactors"], list)
