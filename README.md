@@ -1,184 +1,222 @@
-# LinkShield AI - Advanced Phishing URL Detection v1.0
+# LinkShield AI
 
-![LinkShield AI Logo](https://via.placeholder.com/150x150?text=LinkShield+AI)
+A modern web application for detecting malicious URLs using machine learning. Built with FastAPI backend and React frontend.
 
-## Project Overview
+## 🚀 Features
 
-LinkShield AI is an advanced cybersecurity solution that uses machine learning to detect and prevent phishing attacks. Built with a modern tech stack including React, FastAPI, and BERT-based models, LinkShield provides real-time URL scanning and threat detection.
+- **AI-Powered URL Analysis**: Uses BERT-based machine learning model to detect phishing and malicious URLs
+- **Real-time Scanning**: Fast URL analysis with detailed risk assessment
+- **User Authentication**: Secure JWT-based authentication system
+- **Scan History**: Track and review your previous URL scans
+- **Modern UI**: Clean, responsive interface with dark/light theme support
+- **Guest Mode**: Try the service with limited scans before signing up
 
-## Key Features
-
-- **Real-time URL Scanning**: Instantly analyze URLs for phishing indicators
-- **ML-Powered Detection**: Advanced BERT-based model trained on phishing datasets
-- **User-Friendly Interface**: Clean, responsive UI with dark/light mode support
-- **Scan History**: Track and review previous URL scans
-- **User Profiles**: Personalized experience with AWS Cognito authentication
-- **Serverless Architecture**: Scalable backend deployed on AWS Lambda
-
-## Technology Stack
-
-### Frontend
-- React.js
-- Tailwind CSS
-- Vite (build tool)
-- React Router
-- AWS Amplify for authentication
-- Context API for theme management
-
-### Backend
-- FastAPI (Python)
-- Serverless Framework
-- AWS Cognito Authentication
-- AWS Lambda
-
-### Machine Learning
-- HuggingFace Transformers
-- PyTorch
-- BERT-based model fine-tuned for URL classification
-- Custom training pipeline
-
-## Version Information
-
-**Current Version**: 1.0.1
-**Release Date**: June 8, 2025
-**Status**: Stable Release
-
-### Release Notes
-- Implemented fallback prediction mechanism when ML model is unavailable
-- Enhanced error handling and improved system resilience
-- Fixed DynamoDB scan history format
-- Initial stable release with complete AWS Amplify authentication integration
-- Optimized repository size and structure
-- Full documentation
-
-## Getting Started
-
-### Prerequisites
-- Node.js 16+
-- Python 3.8+
-- AWS Account (for production deployment)
-
-### Quick Start
-1. Clone the repository
-2. Install frontend dependencies: `cd frontend && npm install`
-3. Install backend dependencies: `cd backend && pip install -r requirements.txt`
-4. Start the backend: `cd backend && uvicorn app.main:app --reload`
-5. Start the frontend: `cd frontend && npm run dev`
-
-### Missing ML Model?
-The application will automatically use a rule-based fallback mechanism if the ML model files are missing:
-
-1. Check model status: Visit `http://localhost:8000/health` to verify
-2. Test fallback: Run `python backend/test_fallback.py` to test the fallback mechanism
-
-See [Fallback Mechanism Documentation](docs/fallback_mechanism.md) for more details.
-
-### Frontend Setup
-
-```bash
-# Navigate to frontend directory
-cd ../frontend
-
-# Install dependencies
-npm install
-
-# Run development server
-npm run dev
-```
-
-### ML Model Training (Optional)
-
-```bash
-# Navigate to ML training directory
-cd ../ml_training
-
-# Create and activate virtual environment
-python -m venv venv_ml
-source venv_ml/bin/activate  # On Windows: venv_ml\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run training script
-python train_bert_model.py
-```
-
-## Repository Maintenance
-
-This repository follows best practices to keep its size manageable:
-
-1. **Virtual environments** are not committed to Git
-   - Use `pip install -r requirements.txt` to set up your local environment
-
-2. **Node modules** are not committed to Git
-   - Use `npm install` to install frontend dependencies
-
-3. **Large ML datasets** are provided as samples only
-   - Full datasets can be downloaded separately as needed
-
-4. **Build artifacts** should be generated locally
-
-For detailed maintenance guidelines, see [docs/repository_maintenance.md](docs/repository_maintenance.md).
-
-## Deployment
-
-### Backend Deployment
-
-```bash
-# Navigate to backend directory
-cd backend
-
-# Deploy to AWS Lambda
-serverless deploy
-```
-
-### Frontend Deployment
-
-```bash
-# Navigate to frontend directory
-cd frontend
-
-# Build for production
-npm run build
-
-# Deploy to hosting service of choice (AWS S3, Netlify, Vercel, etc.)
-```
-
-## Project Structure
+## 🏗️ Project Structure
 
 ```
 linkshield-ai/
-├── backend/               # FastAPI backend
+├── backend/                    # FastAPI backend
 │   ├── app/
-│   │   ├── api/           # API endpoints
-│   │   ├── core/          # Core functionality
-│   │   ├── models/        # Data models
-│   │   └── services/      # Business logic
-│   ├── ml_models/         # ML model files
-│   └── serverless.yml     # Serverless config
-├── frontend/              # React frontend
-│   ├── public/            # Static assets
-│   └── src/
-│       ├── components/    # UI components
-│       ├── context/       # React contexts
-│       ├── pages/         # Page components
-│       └── services/      # API services
-├── ml_training/           # ML training code
-│   ├── dataset/           # Training datasets
-│   └── results/           # Training results
-└── docs/                  # Documentation
+│   │   ├── api/v1/            # API endpoints
+│   │   │   ├── analyze.py     # URL analysis
+│   │   │   ├── auth.py        # Authentication
+│   │   │   ├── history.py     # Scan history
+│   │   │   ├── predict.py     # URL prediction
+│   │   │   └── profile.py     # User profiles
+│   │   ├── core/              # Core utilities
+│   │   ├── models/            # Data models
+│   │   ├── services/          # Business logic
+│   │   ├── database.py        # Database operations
+│   │   └── main.py           # FastAPI app
+│   ├── ml_models/            # ML model files
+│   └── requirements.txt      # Python dependencies
+├── frontend/                  # React frontend
+│   ├── src/
+│   │   ├── components/       # React components
+│   │   ├── context/          # React context
+│   │   ├── hooks/            # Custom hooks
+│   │   ├── pages/            # Page components
+│   │   ├── services/         # API services
+│   │   └── App.jsx          # Main app component
+│   └── package.json         # Node.js dependencies
+├── docs/                     # Documentation
+└── ml_training/              # ML training scripts
 ```
 
-## Contributing
+## 🛠️ Installation & Setup
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+### Prerequisites
+- Python 3.11+
+- Node.js 18+
+- npm or yarn
 
-## License
+### Backend Setup
+1. Navigate to backend directory:
+   ```bash
+   cd backend
+   ```
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+2. Create virtual environment:
+   ```bash
+   python -m venv venv
+   venv\Scripts\activate  # Windows
+   # or
+   source venv/bin/activate  # Linux/Mac
+   ```
 
-## Acknowledgements
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-- HuggingFace for the Transformers library
-- AWS for serverless infrastructure
-- The open-source community for various tools and libraries
+4. Start the backend server:
+   ```bash
+   uvicorn app.main:app --reload
+   ```
+
+### Frontend Setup
+1. Navigate to frontend directory:
+   ```bash
+   cd frontend
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Start the development server:
+   ```bash
+   npm run dev
+   ```
+
+## 🔧 Configuration
+
+### Environment Variables
+Create `.env` files in both frontend and backend directories:
+
+**Frontend (.env):**
+```
+VITE_API_BASE_URL=http://localhost:8000
+```
+
+**Backend (.env):**
+```
+SECRET_KEY=your-secret-key-here
+ACCESS_TOKEN_EXPIRE_DAYS=7
+```
+
+## 📊 Database
+
+The application uses SQLite for data storage with the following main tables:
+- `users` - User account information
+- `url_scans` - Scan history and results
+- `user_profiles` - Extended user profile data
+
+## 🤖 Machine Learning
+
+The system uses a fine-tuned BERT model for URL classification:
+- **Model**: BERT for Sequence Classification
+- **Task**: Binary classification (safe/malicious)
+- **Input**: URL strings
+- **Output**: Prediction confidence and risk factors
+
+## 🚀 Deployment
+
+### Production Build
+1. Build frontend:
+   ```bash
+   cd frontend && npm run build
+   ```
+
+2. Set production environment variables
+3. Use production WSGI server (e.g., Gunicorn)
+4. Configure reverse proxy (e.g., Nginx)
+
+### Docker (Optional)
+Build and run using Docker:
+```bash
+# Backend
+docker build -t linkshield-backend ./backend
+docker run -p 8000:8000 linkshield-backend
+
+# Frontend
+docker build -t linkshield-frontend ./frontend
+docker run -p 3000:3000 linkshield-frontend
+```
+
+## 🧪 Testing
+
+### Backend Tests
+```bash
+cd backend
+python -m pytest tests/
+```
+
+### API Testing
+Use the included test script:
+```bash
+python backend/tests/test_api.py
+```
+
+## 📚 API Documentation
+
+Once the backend is running, visit:
+- Swagger UI: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
+
+### Main Endpoints
+- `POST /api/v1/predict/` - Scan a URL
+- `GET /api/v1/analyze-url` - Detailed URL analysis
+- `POST /api/v1/auth/login` - User login
+- `POST /api/v1/auth/register` - User registration
+- `GET /api/v1/history` - Get scan history
+- `GET /api/v1/profile/me` - Get user profile
+
+## 🛡️ Security Features
+
+- JWT-based authentication with 7-day expiration
+- Password hashing using bcrypt
+- CORS protection
+- Input validation and sanitization
+- Rate limiting (planned)
+- SQL injection prevention
+
+## 🎨 UI Features
+
+- **Modern Design**: Clean, professional interface
+- **Dark/Light Theme**: Automatic theme switching
+- **Responsive Layout**: Mobile-friendly design
+- **Real-time Feedback**: Loading states and error handling
+- **Accessibility**: ARIA labels and keyboard navigation
+
+## 🔄 Development Workflow
+
+1. **Feature Development**: Create feature branches
+2. **Code Review**: All changes reviewed before merge
+3. **Testing**: Unit and integration tests required
+4. **Documentation**: Update docs with new features
+
+## 📝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if needed
+5. Update documentation
+6. Submit a pull request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🔗 Links
+
+- [Documentation](./docs/)
+- [API Reference](./docs/api.md)
+- [Deployment Guide](./docs/deployment_guide.md)
+- [Security Guide](./docs/security_best_practices.md)
+
+## 📞 Support
+
+For support, please check the documentation or open an issue on GitHub.

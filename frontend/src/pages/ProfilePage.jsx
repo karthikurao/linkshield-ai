@@ -1,6 +1,6 @@
 // frontend/src/pages/ProfilePage.jsx
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { UserCircleIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
 import { updateUserProfileApi } from '../services/api';
 

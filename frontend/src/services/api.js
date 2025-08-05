@@ -11,143 +11,63 @@ export const api = axios.create({
   },
 });
 
-// Helper function to get auth token from localStorage
-const getAuthToken = () => {
+// Add request interceptor to include auth token
+api.interceptors.request.use((config) => {
   const token = localStorage.getItem('authToken');
-  return token;
-};
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
+
+// Add response interceptor to handle token expiration
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+    
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      
+      // Check if it's specifically a token expiration error
+      const errorMessage = error.response?.data?.detail;
+      if (errorMessage === 'Token has expired' || errorMessage === 'Signature has expired') {
+        // Clear stored auth data
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('userData');
+        delete api.defaults.headers.common['Authorization'];
+        
+        // Redirect to login page or show a message
+        window.location.href = '/login';
+        return Promise.reject(new Error('Session expired. Please log in again.'));
+      }
+    }
+    
+    return Promise.reject(error);
+  }
+);
 
 // EXISTING SCAN API FUNCTIONS
 export const scanUrlApi = async (urlToScan) => {
-  const endpoint = `${API_BASE_URL}/api/v1/predict/`;
   try {
-    // Get the current auth token from localStorage
-    const token = getAuthToken();
-    
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': token ? `Bearer ${token}` : undefined // Add auth token if available
-      },
-      body: JSON.stringify({ url: urlToScan }),
-    });
-    if (response.ok) return await response.json();
-    else { 
-      const errorData = await response.json().catch(() => ({ error: `Failed to scan URL. Status: ${response.status}` }));
-      throw new Error(errorData.error || 'Unknown error occurred while scanning URL');
-    }
+    const response = await api.post('/predict/', { url: urlToScan });
+    return response.data;
   } catch (error) { 
     console.error('URL scan failed:', error);
-    throw error;
-  }
-};
-
-// Add new APIs for advanced features
-
-/**
- * Gets threat intelligence data
- * @param {string} timeframe - Time period for data (all, 24h, 7d, 30d)
- * @returns {Promise<object>} Threat intelligence data
- */
-export const getThreatIntelligenceApi = async (timeframe = 'all') => {
-  const endpoint = `${API_BASE_URL}/api/v1/threat-intel?timeframe=${timeframe}`;
-  
-  try {
-    const token = getAuthToken();
-    
-    const response = await fetch(endpoint, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-    
-    if (response.ok) {
-      return await response.json();
-    } else {
-      throw new Error(`Failed to fetch threat intelligence: ${response.statusText}`);
-    }
-  } catch (error) {
-    console.error('Threat intelligence API error:', error);
-    throw error;
-  }
-};
-
-/**
- * Gets community reports data
- * @param {string} filter - Filter for reports (all, pending, confirmed)
- * @returns {Promise<object>} Community reports data
- */
-export const getCommunityReportsApi = async (filter = 'all') => {
-  const endpoint = `${API_BASE_URL}/api/v1/community-reports?filter=${filter}`;
-  
-  try {
-    const token = getAuthToken();
-    
-    const response = await fetch(endpoint, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-    
-    if (response.ok) {
-      return await response.json();
-    } else {
-      throw new Error(`Failed to fetch community reports: ${response.statusText}`);
-    }
-  } catch (error) {
-    console.error('Community reports API error:', error);
-    throw error;
-  }
-};
-
-/**
- * Submits a new community report
- * @param {object} reportData - Report data including URL and reason
- * @returns {Promise<object>} Submission result
- */
-export const submitCommunityReportApi = async (reportData) => {
-  const endpoint = `${API_BASE_URL}/api/v1/community-reports`;
-  
-  try {
-    const token = getAuthToken();
-    
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(reportData)
-    });
-    
-    if (response.ok) {
-      return await response.json();
-    } else {
-      throw new Error(`Failed to submit report: ${response.statusText}`);
-    }
-  } catch (error) {
-    console.error('Community report submission error:', error);
-    throw error;
+    throw new Error(error.response?.data?.detail || error.message || 'Failed to scan URL');
   }
 };
 
 export const getHistoryApi = async (limit = 10) => {
-    // ... (no changes to this function)
-  const endpoint = `${API_BASE_URL}/api/v1/history?limit=${limit}`;
   try {
-    const token = getAuthToken();
-    const response = await fetch(endpoint, { 
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${token}` // Add auth token to history calls
-        }
-    });
-    if (response.ok) return await response.json();
-    else { /* ... error handling ... */ }
-  } catch (error) { /* ... error handling ... */ }
+    const response = await api.get(`/history?limit=${limit}`);
+    return response.data || [];
+  } catch (error) { 
+    console.error('History fetch failed:', error);
+    throw new Error(error.response?.data?.detail || error.message || 'Failed to fetch scan history');
+  }
 };
 
 
@@ -158,15 +78,8 @@ export const getHistoryApi = async (limit = 10) => {
  * @returns {Promise<object>} A promise that resolves to the success response from the backend.
  */
 export const updateUserProfileApi = async (profileData) => {
-  const endpoint = `${API_BASE_URL}/api/v1/profile/me`;
-
   try {
-    // Get the current user's session token to authorize the request
-    const token = getAuthToken();
-
-    if (!token) {
-      throw new Error("User session not found. Please log in again.");
-    }    // Filter out any empty or undefined values before sending
+    // Filter out any empty or undefined values before sending
     const cleanData = {};
     for (const key in profileData) {
       if (profileData[key] !== undefined && profileData[key] !== '') {
@@ -179,25 +92,11 @@ export const updateUserProfileApi = async (profileData) => {
       return { status: "info", message: "No changes to update" };
     }
 
-    const response = await fetch(endpoint, {
-      method: 'PUT', // Use PUT for updating resources
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}` // Send the token in the Authorization header
-      },
-      body: JSON.stringify(cleanData),
-    });
-
-    if (response.ok) {
-      return await response.json();
-    } else {
-      const errorData = await response.json().catch(() => ({ error: `Failed to update profile. Status: ${response.status}` }));
-      const error = new Error(errorData.error);
-      throw error;
-    }
+    const response = await api.put('/profile/me', cleanData);
+    return response.data;
   } catch (error) {
     console.error('API profile update failed:', error);
-    throw new Error(error.message || 'Network error while updating profile.');
+    throw new Error(error.response?.data?.detail || error.message || 'Network error while updating profile.');
   }
 };
 
@@ -207,52 +106,31 @@ export const updateUserProfileApi = async (profileData) => {
  * @returns {Promise<object>} Analysis report containing factors like risk score, risk level, and specific risk factors.
  */
 export const getFactorAnalysisApi = async (urlToScan) => {
-  const endpoint = `${API_BASE_URL}/api/v1/analyze-url?url=${encodeURIComponent(urlToScan)}`;
   try {
-    let headers = { 'Content-Type': 'application/json' };
+    const response = await api.get(`/analyze-url?url=${encodeURIComponent(urlToScan)}`);
+    const data = response.data;
     
-    try {
-      const token = getAuthToken();
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-    } catch {
-      console.log('No authenticated session, proceeding as guest');
-    }
+    // Create a properly formatted response object that maintains compatibility with the UI
+    const riskScore = data.riskScore || Math.floor(Math.random() * 100);
+    const riskLevel = data.riskLevel || (riskScore > 60 ? 'high' : (riskScore > 30 ? 'medium' : 'low'));
+    const status = riskLevel === 'high' ? 'malicious' : (riskLevel === 'medium' ? 'suspicious' : 'benign');
     
-    const response = await fetch(endpoint, {
-      method: 'GET',
-      headers,
-    });
-    
-    if (response.ok) {
-      const data = await response.json();
-      
-      // Create a properly formatted response object that maintains compatibility with the UI
-      const riskScore = data.riskScore || Math.floor(Math.random() * 100);
-      const riskLevel = data.riskLevel || (riskScore > 60 ? 'high' : (riskScore > 30 ? 'medium' : 'low'));
-      const status = riskLevel === 'high' ? 'malicious' : (riskLevel === 'medium' ? 'suspicious' : 'benign');
-      
-      return {
-        status: data.status || status,
-        url: urlToScan,
-        message: data.message || (status === 'benign' ? 'This URL appears safe.' : 
-                   (status === 'suspicious' ? 'This URL has some suspicious patterns.' : 
-                    'This URL appears to be malicious.')),
-        confidence: data.confidence || (riskScore / 100),
-        factors: data.factors || [],
-        riskScore: riskScore,
-        riskLevel: riskLevel,
-        riskFactors: data.riskFactors || [
-          { name: 'Domain Age', impact: 'medium', description: 'Recently registered domain (less than 1 month old)' },
-          { name: 'SSL Certificate', impact: 'low', description: 'Valid certificate but from a less common issuer' },
-          { name: 'URL Structure', impact: 'high', description: 'Contains suspicious parameters or encoded characters' }
-        ]
-      };
-    } else { 
-      const errorData = await response.json().catch(() => ({ error: `Failed to analyze URL. Status: ${response.status}` }));
-      throw new Error(errorData.error || 'Unknown error occurred while analyzing URL');
-    }
+    return {
+      status: data.status || status,
+      url: urlToScan,
+      message: data.message || (status === 'benign' ? 'This URL appears safe.' : 
+                 (status === 'suspicious' ? 'This URL has some suspicious patterns.' : 
+                  'This URL appears to be malicious.')),
+      confidence: data.confidence || (riskScore / 100),
+      factors: data.factors || [],
+      riskScore: riskScore,
+      riskLevel: riskLevel,
+      riskFactors: data.riskFactors || [
+        { name: 'Domain Age', impact: 'medium', description: 'Recently registered domain (less than 1 month old)' },
+        { name: 'SSL Certificate', impact: 'low', description: 'Valid certificate but from a less common issuer' },
+        { name: 'URL Structure', impact: 'high', description: 'Contains suspicious parameters or encoded characters' }
+      ]
+    };
   } catch (error) { 
     console.error('URL analysis failed:', error);
     

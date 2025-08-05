@@ -2,8 +2,7 @@
 from fastapi import FastAPI
 from starlette.requests import Request # Correct import
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.v1 import predict as predict_v1, history as history_v1, profile as profile_v1, analyze as analyze_v1
-from app.api.v1 import community, examples, threat_intel, auth
+from app.api.v1 import predict as predict_v1, history as history_v1, profile as profile_v1, analyze as analyze_v1, auth
 from transformers import BertForSequenceClassification, BertTokenizer
 import os
 import torch
@@ -45,8 +44,13 @@ async def startup_event():
             return
         
         # Check if required model files exist
-        required_files = ["pytorch_model.bin", "config.json", "vocab.txt", "tokenizer_config.json"]
+        # Support both pytorch_model.bin (older format) and model.safetensors (newer format)
+        model_file_exists = os.path.exists(os.path.join(MODEL_DIR, "pytorch_model.bin")) or os.path.exists(os.path.join(MODEL_DIR, "model.safetensors"))
+        required_files = ["config.json", "vocab.txt", "tokenizer_config.json"]
         missing_files = [f for f in required_files if not os.path.exists(os.path.join(MODEL_DIR, f))]
+        
+        if not model_file_exists:
+            missing_files.append("pytorch_model.bin or model.safetensors")
         
         if missing_files:
             error_msg = f"Missing model files: {', '.join(missing_files)}. Using fallback prediction."
@@ -54,7 +58,7 @@ async def startup_event():
             print(error_msg)
             
             # Try to load tokenizer only if the required files exist
-            if all(f in missing_files for f in ["pytorch_model.bin", "config.json"]) and not all(f in missing_files for f in ["vocab.txt", "tokenizer_config.json"]):
+            if not model_file_exists and not all(f in missing_files for f in ["vocab.txt", "tokenizer_config.json"]):
                 try:
                     app.state.tokenizer = BertTokenizer.from_pretrained(MODEL_DIR)
                     print("Tokenizer loaded successfully, but model is missing.")
@@ -82,14 +86,8 @@ app.include_router(analyze_v1.router, prefix="/api/v1/analyze-url", tags=["URL A
 # Add authentication router
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
 
-# Add new routers for community features
-app.include_router(community.router, prefix="/api/v1/community-reports", tags=["Community Reports"])
-app.include_router(examples.router, prefix="/api/v1/phishing-examples", tags=["Phishing Examples"])
-app.include_router(threat_intel.router, prefix="/api/v1/threat-intel", tags=["Threat Intelligence"])
-
-# Include our new detailed factors endpoint
-from app.api.endpoints import predict as predict_detailed
-app.include_router(predict_detailed.router, prefix="/api/factors", tags=["URL Factor Analysis"])
+# These features are not implemented yet
+# TODO: Add community features, examples, threat intel, and detailed factors in future versions
 
 @app.get("/", tags=["Root"])
 async def read_root():
@@ -124,8 +122,14 @@ async def health_check(request: Request):
     # Check if model directory exists and which files are missing
     if os.path.exists(MODEL_DIR):
         files_present = os.listdir(MODEL_DIR)
-        required_files = ["pytorch_model.bin", "config.json", "vocab.txt", "tokenizer_config.json"]
+        # Support both pytorch_model.bin (older format) and model.safetensors (newer format)
+        required_files = ["config.json", "vocab.txt", "tokenizer_config.json"]
+        model_file_exists = "pytorch_model.bin" in files_present or "model.safetensors" in files_present
         missing_files = [f for f in required_files if f not in files_present]
+        
+        if not model_file_exists:
+            missing_files.append("pytorch_model.bin or model.safetensors")
+            
         model_details["model_dir"] = MODEL_DIR
         model_details["files_present"] = files_present
         model_details["missing_files"] = missing_files

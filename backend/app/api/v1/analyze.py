@@ -7,6 +7,7 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 from app.services.app_service import analyze_url_for_details, get_domain_info
 from .auth_utils import get_current_user_sub
+from app.database import ScanDatabase
 
 # Models for request and response
 class URLAnalysisRequest(BaseModel):
@@ -60,6 +61,7 @@ async def analyze_url_endpoint(
     user_id: Optional[str] = Depends(get_current_user_sub)
 ):
     # Make this endpoint accessible without authentication for testing
+    print(f"Analyze endpoint called with user_id: {user_id}")
     
     # Get the detailed factors from analysis
     detailed_factors = analyze_url_for_details(url)
@@ -283,6 +285,20 @@ async def analyze_url_endpoint(
     
     # Calculate a confidence value (0-1) from the risk score (0-100)
     confidence = risk_score / 100
+    
+    # Save scan result to database if user is authenticated
+    if user_id:
+        try:
+            ScanDatabase.save_scan(
+                user_id=user_id,
+                url=url,
+                result=status,
+                confidence=confidence
+            )
+            print(f"Saved scan result to database for user {user_id}: {url} -> {status}")
+        except Exception as e:
+            print(f"Failed to save scan result to database: {e}")
+            # Don't fail the request if database save fails
     
     return URLAnalysisResponse(
         url=url,

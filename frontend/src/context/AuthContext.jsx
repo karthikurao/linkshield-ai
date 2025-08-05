@@ -1,16 +1,8 @@
 // frontend/src/context/AuthContext.jsx
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect } from 'react';
 import { api } from '../services/api';
 
 const AuthContext = createContext({});
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -21,13 +13,21 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const token = localStorage.getItem('authToken');
     if (token) {
-      // Verify token is still valid
+      // Verify token is still valid by making a test request
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      // You could add a /me endpoint to verify the token
-      // For now, we'll assume it's valid
+      
+      // Try to fetch user data to verify token validity
       const userData = localStorage.getItem('userData');
       if (userData) {
-        setUser(JSON.parse(userData));
+        try {
+          setUser(JSON.parse(userData));
+        } catch (error) {
+          // Invalid stored data, clear it
+          console.warn('Invalid stored user data, clearing authentication:', error.message);
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('userData');
+          delete api.defaults.headers.common['Authorization'];
+        }
       }
     }
     setLoading(false);
@@ -127,3 +127,6 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 };
+
+// Export the context for use in hooks
+export { AuthContext };

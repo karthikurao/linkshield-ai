@@ -1,6 +1,7 @@
 // frontend/src/components/ScanHistoryList.jsx
 import React, { useState, useEffect } from 'react';
 import { getHistoryApi } from '../services/api';
+import { useAuth } from '../hooks/useAuth';
 import ScanHistoryItem from './ScanHistoryItem';
 import EmptyState from './EmptyState';
 
@@ -9,8 +10,17 @@ const ScanHistoryList = ({ refreshTrigger }) => {
   const [history, setHistory] = useState(null); 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  const { user, isAuthenticated } = useAuth();
 
   useEffect(() => {
+    // Only fetch history if user is authenticated
+    if (!isAuthenticated || !user) {
+      setHistory([]);
+      setIsLoading(false);
+      return;
+    }
+
     const fetchHistory = async () => {
       setIsLoading(true);
       setError(null);
@@ -19,6 +29,7 @@ const ScanHistoryList = ({ refreshTrigger }) => {
         // Ensure that even if the API returns a falsy value, we set state to a safe empty array.
         setHistory(historyData || []); 
       } catch (err) {
+        console.error('Failed to fetch history:', err);
         setError(err.message || 'Failed to load scan history.');
         // When an error occurs, we still ensure history is a safe empty array to prevent crashes.
         setHistory([]); 
@@ -28,7 +39,7 @@ const ScanHistoryList = ({ refreshTrigger }) => {
     };
 
     fetchHistory();
-  }, [refreshTrigger]); 
+  }, [refreshTrigger, isAuthenticated, user]); // Added authentication dependencies 
 
   const renderContent = () => {
     if (isLoading) {

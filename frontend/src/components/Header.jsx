@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ThemeToggleButton from './ThemeToggleButton';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { UserCircleIcon, Cog6ToothIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
 
 const Header = () => {
@@ -48,9 +48,6 @@ const Header = () => {
                     <nav className="hidden md:flex items-center space-x-6 mr-4 text-sm">
                         <Link to="/" className="text-slate-700 dark:text-slate-300 hover:text-brand-accent dark:hover:text-brand-accent-dark transition-colors">
                             Home
-                        </Link>
-                        <Link to="/advanced" className="text-slate-700 dark:text-slate-300 hover:text-brand-accent dark:hover:text-brand-accent-dark transition-colors">
-                            Advanced Features
                         </Link>
                     </nav>                    <ThemeToggleButton />
                     

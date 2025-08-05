@@ -2,7 +2,8 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeProvider';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider } from './context/AuthContext';
+import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
 import Header from './components/Header';
 import URLInputForm from './components/URLInputForm';
@@ -10,11 +11,7 @@ import ScanResultDisplay from './components/ScanResultDisplay';
 import ScanHistoryList from './components/ScanHistoryList';
 import ProfilePage from './pages/ProfilePage';
 import LoginPage from './pages/LoginPage';
-import AdvancedFeaturesPage from './pages/AdvancedFeaturesPage';
 import { scanUrlApi, getFactorAnalysisApi } from './services/api';
-
-// CSS imports
-import './components/AdvancedFeatures.css';
 
 // A special component to protect routes that require authentication
 const ProtectedRoute = ({ children }) => {
@@ -94,11 +91,6 @@ const AppContent = () => {
             <ProtectedRoute>
               <ProfilePage />
             </ProtectedRoute>
-          } />
-          <Route path="/advanced" element={
-            <div className="w-full">
-              <AdvancedFeaturesPage />
-            </div>
           } />
           <Route path="/" element={
             <div className="w-full max-w-2xl">
