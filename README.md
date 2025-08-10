@@ -39,6 +39,12 @@ linkshield-ai/
 │   │   ├── services/         # API services
 │   │   └── App.jsx          # Main app component
 │   └── package.json         # Node.js dependencies
+├── browser-extension/        # Chrome/Firefox extension
+│   ├── manifest.json        # Extension configuration
+│   ├── background.js        # Service worker
+│   ├── content.js           # Page injection script
+│   ├── popup.html/js        # Extension popup
+│   └── options.html         # Settings page
 ├── docs/                     # Documentation
 └── ml_training/              # ML training scripts
 ```
@@ -144,6 +150,32 @@ docker run -p 8000:8000 linkshield-backend
 docker build -t linkshield-frontend ./frontend
 docker run -p 3000:3000 linkshield-frontend
 ```
+
+## 🌐 Browser Extension
+
+LinkShield AI includes a real-time browser extension for Chrome and Firefox that provides automatic protection while browsing.
+
+### Features
+- **Real-time URL Scanning**: Automatically scans pages as you navigate
+- **Visual Warnings**: Highlights dangerous links and shows warning banners
+- **Popup Interface**: Quick access to scan results and statistics
+- **Configurable Protection**: Customizable security levels and notifications
+
+### Installation
+1. **Start the Backend**: Ensure your LinkShield AI API is running
+2. **Load Extension**: 
+   - Open Chrome → Extensions → Developer Mode
+   - Click "Load unpacked" → Select `browser-extension` folder
+3. **Configure**: Click extension icon → Settings to configure API URL
+
+### Usage
+The extension works automatically once installed:
+- Scans every page you visit
+- Shows security status in the extension badge
+- Warns about suspicious/malicious sites
+- Provides detailed analysis on demand
+
+For detailed setup and configuration, see `browser-extension/README.md`.
 
 ## 🧪 Testing
 
