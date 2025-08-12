@@ -6,7 +6,7 @@ from pydantic import BaseModel, HttpUrl
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from app.services.app_service import analyze_url_for_details, get_domain_info
-from .auth_utils import get_current_user_sub
+from .auth_utils import get_current_user_sub_optional
 from app.database import ScanDatabase
 
 # Models for request and response
@@ -58,7 +58,7 @@ router = APIRouter()
 )
 async def analyze_url_endpoint(
     url: str = Query(..., description="The URL to analyze"),
-    user_id: Optional[str] = Depends(get_current_user_sub)
+    user_id: Optional[str] = Depends(get_current_user_sub_optional)
 ):
     # Make this endpoint accessible without authentication for testing
     print(f"Analyze endpoint called with user_id: {user_id}")

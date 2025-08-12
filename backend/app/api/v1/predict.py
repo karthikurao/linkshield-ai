@@ -7,7 +7,7 @@ from app.models.url import URLScanRequest, URLScanResponse, ErrorResponse
 from app.services.app_service import run_prediction, get_fallback_prediction
 from app.database import ScanDatabase
 # Assuming auth_utils is also updated as per previous instructions
-from .auth_utils import get_current_user_sub 
+from .auth_utils import get_current_user_sub_optional 
 from typing import Optional
 
 router = APIRouter()
@@ -26,7 +26,7 @@ router = APIRouter()
 async def scan_url_endpoint(
     request_data: URLScanRequest, 
     request: Request,
-    user_id: Optional[str] = Depends(get_current_user_sub) # Make user_id optional for guest scans
+    user_id: Optional[str] = Depends(get_current_user_sub_optional) # Make user_id optional for guest scans
 ):
     model = request.app.state.model
     tokenizer = request.app.state.tokenizer

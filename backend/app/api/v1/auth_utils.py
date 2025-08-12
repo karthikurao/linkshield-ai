@@ -5,6 +5,7 @@ from starlette.exceptions import HTTPException
 from starlette import status
 from jose.exceptions import JWTError
 from app.database import UserDatabase
+from typing import Optional
 import os
 
 # JWT configuration
@@ -43,6 +44,17 @@ async def get_current_user_sub(request: Request) -> str:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials")
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"An unexpected error during authentication: {e}")
+
+async def get_current_user_sub_optional(request: Request) -> Optional[str]:
+    """Extract user ID from JWT token in request headers. Returns None if no token provided."""
+    token = request.headers.get("Authorization")
+    if not token:
+        return None  # Allow guest access
+    
+    try:
+        return await get_current_user_sub(request)
+    except HTTPException:
+        return None  # If token is invalid, treat as guest
 
 def get_current_user_from_token(token: str) -> dict:
     """Get user information directly from token string."""
