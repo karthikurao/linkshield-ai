@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LinkShield AI - Website Blocked</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      color: white;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .container {
+      max-width: 600px;
+      text-align: center;
+      padding: 40px;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .icon {
+      font-size: 80px;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      font-size: 2.5em;
+      margin-bottom: 20px;
+      font-weight: bold;
+    }
+
+    .blocked-url {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 15px;
+      border-radius: 10px;
+      margin: 20px 0;
+      word-break: break-all;
+      font-family: monospace;
+      font-size: 14px;
+    }
+
+    .warning-text {
+      font-size: 18px;
+      line-height: 1.6;
+      margin-bottom: 30px;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 15px 30px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      transition: all 0.3s ease;
+      font-weight: bold;
+    }
+
+    .btn-safe {
+      background: #10b981;
+      color: white;
+    }
+
+    .btn-safe:hover {
+      background: #059669;
+      transform: translateY(-2px);
+    }
+
+    .btn-proceed {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .btn-proceed:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .details {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 20px;
+      border-radius: 10px;
+      margin-top: 30px;
+      text-align: left;
+    }
+
+    .details h3 {
+      margin-top: 0;
+      color: #fbbf24;
+    }
+
+    .risk-factor {
+      margin: 10px 0;
+      padding: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 5px;
+      font-size: 14px;
+    }
+
+    .footer {
+      margin-top: 40px;
+      font-size: 14px;
+      opacity: 0.8;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    .pulse {
+      animation: pulse 2s infinite;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon pulse">🛡️</div>
+    <h1>Website Blocked</h1>
+    
+    <div class="warning-text">
+      <strong>LinkShield AI has blocked this website to protect you.</strong><br>
+      This site has been identified as potentially dangerous or malicious.
+    </div>
+
+    <div class="blocked-url" id="blocked-url">
+      Loading...
+    </div>
+
+    <div class="buttons">
+      <button class="btn btn-safe" onclick="goBack()">
+        ← Go Back to Safety
+      </button>
+      <button class="btn btn-proceed" onclick="proceedAnyway()">
+        ⚠️ Proceed Anyway (Not Recommended)
+      </button>
+    </div>
+
+    <div class="details" id="scan-details" style="display: none;">
+      <h3>⚠️ Threat Analysis</h3>
+      <div id="threat-details"></div>
+    </div>
+
+    <div class="footer">
+      <p>🛡️ Protected by LinkShield AI</p>
+      <p>Real-time phishing and malware protection</p>
+    </div>
+  </div>
+
+  <script>
+    // Get the blocked URL from query parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const blockedUrl = urlParams.get('blocked');
+    
+    if (blockedUrl) {
+      document.getElementById('blocked-url').textContent = decodeURIComponent(blockedUrl);
+      
+      // Load scan details if available
+      loadScanDetails(blockedUrl);
+    }
+
+    function goBack() {
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.location.href = 'https://google.com';
+      }
+    }
+
+    function proceedAnyway() {
+      const confirmed = confirm(
+        'WARNING: This website may contain malware, phishing attempts, or other threats that could harm your device or steal your personal information.\n\n' +
+        'Are you absolutely sure you want to continue?\n\n' +
+        'LinkShield AI strongly recommends against visiting this site.'
+      );
+      
+      if (confirmed) {
+        const doubleConfirm = confirm(
+          'FINAL WARNING: You are about to visit a potentially dangerous website.\n\n' +
+          'This action could expose you to:\n' +
+          '• Identity theft\n' +
+          '• Malware infection\n' +
+          '• Financial fraud\n' +
+          '• Data breaches\n\n' +
+          'Proceed at your own risk?'
+        );
+        
+        if (doubleConfirm && blockedUrl) {
+          // Add a parameter to bypass the extension check
+          const bypassUrl = blockedUrl + (blockedUrl.includes('?') ? '&' : '?') + 'linkshield_bypass=true';
+          window.location.href = bypassUrl;
+        }
+      }
+    }
+
+    async function loadScanDetails(url) {
+      try {
+        // Try to get scan details from storage
+        const result = await chrome.storage.session.get(['lastScanResult']);
+        if (result.lastScanResult) {
+          displayThreatDetails(result.lastScanResult);
+        }
+      } catch (error) {
+        console.log('Could not load scan details:', error);
+      }
+    }
+
+    function displayThreatDetails(scanResult) {
+      const detailsDiv = document.getElementById('scan-details');
+      const threatDiv = document.getElementById('threat-details');
+      
+      if (scanResult.details && scanResult.details.length > 0) {
+        let detailsHTML = `
+          <p><strong>Confidence:</strong> ${Math.round(scanResult.confidence * 100)}%</p>
+          <p><strong>Threat Type:</strong> ${scanResult.status.toUpperCase()}</p>
+          <h4>Risk Factors:</h4>
+        `;
+        
+        scanResult.details.forEach(detail => {
+          detailsHTML += `<div class="risk-factor">• ${detail}</div>`;
+        });
+        
+        threatDiv.innerHTML = detailsHTML;
+        detailsDiv.style.display = 'block';
+      }
+    }
+
+    // Store scan result for details display
+    if (blockedUrl) {
+      chrome.storage.session.set({
+        lastBlockedUrl: blockedUrl,
+        blockTimestamp: Date.now()
+      });
+    }
+  </script>
+</body>
+</html>
