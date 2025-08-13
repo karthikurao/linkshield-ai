@@ -27,6 +27,7 @@ MANIFEST
 venv/
 venv_ml/
 .venv/
+.venv-*/
 env/
 ENV/
 env.bak/
