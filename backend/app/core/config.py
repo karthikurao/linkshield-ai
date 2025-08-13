@@ -14,3 +14,16 @@ AWS_REGION = os.getenv("AWS_REGION")
 SCAN_HISTORY_TABLE_NAME = os.getenv("SCAN_HISTORY_TABLE_NAME")
 COGNITO_APP_CLIENT_ID = os.getenv("COGNITO_APP_CLIENT_ID")
 VIRUSTOTAL_API_KEY = os.getenv("VIRUSTOTAL_API_KEY", "")
+
+# Add JWT settings for testing
+SECRET_KEY = os.getenv("SECRET_KEY", "test_secret_key_for_development")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+# Settings object for backward compatibility with tests
+class Settings:
+    SECRET_KEY = SECRET_KEY
+    ALGORITHM = ALGORITHM
+    ACCESS_TOKEN_EXPIRE_MINUTES = ACCESS_TOKEN_EXPIRE_MINUTES
+
+settings = Settings()
