@@ -105,3 +105,18 @@ optimizer.pt
 .aws-config/
 .aws/
 samconfig.toml
+
+# Temporary and development files
+*.tmp
+*.temp
+temp/
+tmp/
+.DS_Store
+Thumbs.db
+
+# Development documentation (temporary)
+*_STATUS.md
+*_UPDATE.md
+explore_*.bat
+db_explorer.py
+check_*.py
