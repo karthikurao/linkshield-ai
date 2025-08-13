@@ -11,16 +11,16 @@ fi
 
 # Create virtual environment
 echo "📦 Creating virtual environment..."
-python -m venv venv
+python -m venv backenv
 
 # Activate virtual environment
 echo "🔄 Activating virtual environment..."
 if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]]; then
     # Windows
-    source venv/Scripts/activate
+    source backenv/Scripts/activate
 else
     # Linux/Mac
-    source venv/bin/activate
+    source backenv/bin/activate
 fi
 
 # Upgrade pip
@@ -34,8 +34,8 @@ pip install -r requirements.txt
 echo "✅ Setup complete!"
 echo ""
 echo "To activate the environment:"
-echo "  Windows: .\\venv\\Scripts\\Activate.ps1"
-echo "  Linux/Mac: source venv/bin/activate"
+echo "  Windows: .\\backenv\\Scripts\\Activate.ps1"
+echo "  Linux/Mac: source backenv/bin/activate"
 echo ""
 echo "To start the server:"
 echo "  uvicorn app.main:app --reload"

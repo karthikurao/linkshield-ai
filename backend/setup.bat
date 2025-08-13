@@ -12,11 +12,11 @@ if %errorlevel% neq 0 (
 
 REM Create virtual environment
 echo 📦 Creating virtual environment...
-python -m venv venv
+python -m venv backenv
 
 REM Activate virtual environment
 echo 🔄 Activating virtual environment...
-call venv\Scripts\activate.bat
+call backenv\Scripts\activate.bat
 
 REM Upgrade pip
 echo ⬆️  Upgrading pip...
@@ -29,7 +29,7 @@ pip install -r requirements.txt
 echo ✅ Setup complete!
 echo.
 echo To activate the environment:
-echo   venv\Scripts\activate.bat
+echo   backenv\Scripts\activate.bat
 echo.
 echo To start the server:
 echo   uvicorn app.main:app --reload

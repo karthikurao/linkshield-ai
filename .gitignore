@@ -28,6 +28,7 @@ venv/
 venv_ml/
 .venv/
 .venv-*/
+backenv/
 env/
 ENV/
 env.bak/
