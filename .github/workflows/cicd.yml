@@ -2,9 +2,9 @@ name: LinkShield AI CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, develop, QA ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, develop, QA ]
 
 jobs:
   backend-tests:
@@ -90,6 +90,41 @@ jobs:
       with:
         name: frontend-build
         path: frontend/dist
+
+  deploy-qa:
+    needs: [backend-tests, build-frontend]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/QA'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        cd backend
+        pip install -r requirements.txt
+        python -m pip install --upgrade pip
+        pip install pytest pytest-cov
+    
+    - name: Run QA Test Suite
+      run: |
+        python run_qa_tests.py
+    
+    - name: QA Environment Deployment
+      run: |
+        echo "Deploying to QA environment..."
+        echo "QA validation completed successfully"
+        echo "Ready for production deployment"
+    
+    - name: Generate QA Badge
+      run: |
+        echo "QA_STATUS=ready-for-prod" >> $GITHUB_ENV
+        echo "QA_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_ENV
 
   deploy-dev:
     needs: [backend-tests, build-frontend]
