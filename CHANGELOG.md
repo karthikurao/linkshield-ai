@@ -2,6 +2,42 @@
 
 All notable changes to the LinkShield AI project will be documented in this file.
 
+## [2.1.0] - 2025-10-08
+
+### 🎯 Added
+- **Enhanced Phishing Detection**: Rule-based sensitivity adjustments that work alongside ML model
+- **Post-Processing Override System**: Intelligent analysis that can override ML predictions
+- **Aggressive Pattern Detection**: 20+ phishing indicators with weighted scoring
+- **Brand Impersonation Detection**: Identifies fake domains impersonating major brands
+- **Typosquatting Detection**: Catches common misspellings of popular sites
+- **Detailed Security Alerts**: Visual indicators (🚨🔴⚠️) for threat levels
+
+### 🔧 Changed
+- **Model Version**: Updated to "linkshield-bert-v1.0-enhanced"
+- **Fallback Thresholds**: More aggressive classification (40/60 instead of 30/70)
+- **Keyword Penalties**: Increased from 5 to 8 points for suspicious keywords
+- **Suspicious Keywords Impact**: Upgraded from "medium" to "high" priority
+- **Override Messages**: Now shows ML prediction vs adjusted classification
+
+### 🐛 Fixed
+- **False Negatives**: Significantly reduced missed phishing URLs
+- **Benign Bias**: Model now catches obvious phishing patterns it previously missed
+- **IP-based URLs**: Now correctly flagged as high-risk (critical indicator)
+- **Suspicious TLDs**: Enhanced detection of commonly abused TLDs
+
+### 🔒 Security
+- **Multi-Layer Defense**: ML model + rule-based validation
+- **Explainable AI**: Clear reasons for every security decision
+- **High-Risk Keyword Detection**: 20+ phishing-related terms
+- **Protocol Validation**: Flags insecure HTTP connections
+- **Domain Analysis**: Enhanced brand impersonation checks
+
+### 📊 Performance
+- **No Latency Impact**: Rule-based checks run in milliseconds
+- **No Model Changes**: Works without retraining or model access
+- **Tunable Thresholds**: Easy adjustment without code changes
+- **Complementary Design**: Enhances rather than replaces ML
+
 ## [2.0.0] - 2025-08-13
 
 ### 🚀 Added

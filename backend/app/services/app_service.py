@@ -107,16 +107,32 @@ def get_fallback_prediction(url: str, user_id: Optional[str] = None) -> URLScanR
         details.append(f"Domain name is unusually long ({len(hostname)} characters).")
     
     # 6. Check for suspicious words in hostname
-    suspicious_words = ['secure', 'login', 'verify', 'account', 'banking', 'update', 'confirm']
+    suspicious_words = ['secure', 'login', 'verify', 'account', 'banking', 'update', 'confirm', 
+                       'suspended', 'urgent', 'security', 'alert', 'billing', 'payment']
     found_words = [word for word in suspicious_words if word in hostname.lower()]
     if found_words:
-        risk_score += len(found_words) * 5
+        risk_score += len(found_words) * 8  # Increased from 5 to 8
         risk_factors.append({
             "name": "Suspicious Keywords", 
-            "impact": "medium", 
+            "impact": "high",  # Changed from medium to high
             "description": f"Domain contains potentially deceptive terms: {', '.join(found_words)}"
         })
         details.append(f"URL contains potentially sensitive keywords: {', '.join(found_words)}.")
+    
+    # 6a. Check for brand impersonation keywords (NEW)
+    brand_keywords = ['paypal', 'amazon', 'netflix', 'microsoft', 'google', 'apple', 'facebook', 'instagram']
+    found_brands = [brand for brand in brand_keywords if brand in hostname.lower()]
+    if found_brands:
+        # Check if it's actually the legitimate domain
+        is_legitimate = any(hostname.endswith(f"{brand}.com") for brand in found_brands)
+        if not is_legitimate:
+            risk_score += 20  # High penalty for brand impersonation
+            risk_factors.append({
+                "name": "Brand Impersonation", 
+                "impact": "critical", 
+                "description": f"URL appears to impersonate: {', '.join(found_brands)}"
+            })
+            details.append(f"⚠️ CRITICAL: URL may be impersonating {', '.join(found_brands)}.")
     
     # 7. Check for special characters in hostname
     if re.search(r"[^\w\-\.]", hostname):
@@ -160,11 +176,11 @@ def get_fallback_prediction(url: str, user_id: Optional[str] = None) -> URLScanR
     # Cap the score at 100
     risk_score = min(risk_score, 100)
     
-    # Determine risk level based on score
-    if risk_score < 30:
+    # Determine risk level based on score (ADJUSTED THRESHOLDS - MORE AGGRESSIVE)
+    if risk_score < 40:  # Lowered from 30 to 40
         risk_level = "low"
         status = "benign"
-    elif risk_score < 70:
+    elif risk_score < 60:  # Lowered from 70 to 60
         risk_level = "medium"
         status = "suspicious"
     else:
@@ -542,6 +558,111 @@ def get_scan_history(limit: int = 10) -> List[dict]:
     except Exception as e: print(f"Error fetching scan history from DynamoDB: {e}"); return []
 
 
+# --- NEW: Enhanced Phishing Detection with Sensitivity Adjustment ---
+def apply_sensitivity_adjustment(url: str, ml_status: str, ml_confidence: float, details: List[str]) -> tuple:
+    """
+    Applies rule-based sensitivity adjustments to improve phishing detection.
+    This function can override the ML model's prediction if strong phishing indicators are found.
+    
+    Returns: (adjusted_status, adjusted_confidence, additional_details)
+    """
+    parsed_url = urlparse(url)
+    hostname = parsed_url.hostname or ""
+    path = parsed_url.path
+    query = parsed_url.query
+    
+    # Initialize suspicion score
+    suspicion_score = 0
+    override_details = []
+    
+    # 1. AGGRESSIVE: Check for phishing keywords (high priority)
+    high_risk_keywords = [
+        'verify', 'account', 'suspended', 'update', 'confirm', 'secure',
+        'login', 'signin', 'password', 'security', 'alert', 'urgent',
+        'billing', 'payment', 'bank', 'paypal', 'netflix', 'amazon',
+        'apple', 'microsoft', 'google', 'verification', 'locked'
+    ]
+    
+    found_keywords = [kw for kw in high_risk_keywords if kw in url.lower()]
+    if found_keywords:
+        suspicion_score += len(found_keywords) * 15
+        override_details.append(f"⚠️ ALERT: Contains {len(found_keywords)} high-risk phishing keyword(s): {', '.join(found_keywords[:3])}")
+    
+    # 2. Check for suspicious TLDs (commonly used in phishing)
+    suspicious_tlds = ['.xyz', '.tk', '.top', '.club', '.gq', '.ml', '.ga', '.cf', '.info', '.loan', '.pw', '.buzz', '.click']
+    if any(hostname.endswith(tld) for tld in suspicious_tlds):
+        suspicion_score += 20
+        tld = '.' + hostname.split('.')[-1] if '.' in hostname else ''
+        override_details.append(f"⚠️ ALERT: Uses high-risk TLD: {tld}")
+    
+    # 3. Check for IP address as hostname (major red flag)
+    if re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", hostname):
+        suspicion_score += 30
+        override_details.append("🚨 CRITICAL: URL uses IP address instead of domain name - strong phishing indicator")
+    
+    # 4. Check for excessive subdomains (obfuscation technique)
+    subdomain_count = len(hostname.split('.')) - 2 if hostname and len(hostname.split('.')) > 2 else 0
+    if subdomain_count > 3:
+        suspicion_score += 15
+        override_details.append(f"⚠️ ALERT: Excessive subdomains ({subdomain_count}) - possible obfuscation")
+    
+    # 5. Check for HTTP instead of HTTPS (security risk)
+    if parsed_url.scheme == 'http':
+        suspicion_score += 15
+        override_details.append("⚠️ WARNING: Uses insecure HTTP protocol")
+    
+    # 6. Check for typosquatting patterns
+    typosquatting_patterns = [
+        'g00gle', 'gogle', 'amaz0n', 'micr0soft', 'faceb00k', 
+        'payp', 'netfl', 'appl-', 'twiter', 'lnkedin', 'instgrm'
+    ]
+    if any(pattern in hostname.lower() for pattern in typosquatting_patterns):
+        suspicion_score += 25
+        override_details.append("🚨 CRITICAL: Possible typosquatting detected - impersonation attempt")
+    
+    # 7. Check for suspicious character patterns
+    if '@' in hostname or '%' in hostname[:50]:  # @ in hostname or early encoding
+        suspicion_score += 20
+        override_details.append("⚠️ ALERT: Suspicious characters in hostname - possible deception")
+    
+    # 8. Check for very long URLs (common in phishing)
+    if len(url) > 150:
+        suspicion_score += 10
+        override_details.append(f"⚠️ WARNING: Unusually long URL ({len(url)} characters)")
+    
+    # 9. Check for multiple hyphens in domain (suspicious pattern)
+    if hostname.count('-') > 2:
+        suspicion_score += 10
+        override_details.append(f"⚠️ WARNING: Multiple hyphens in domain ({hostname.count('-')})")
+    
+    # 10. Check for URL encoding abuse
+    if url.count('%') > 3:
+        suspicion_score += 15
+        override_details.append(f"⚠️ ALERT: Excessive URL encoding ({url.count('%')} instances)")
+    
+    # Decision logic: Override ML prediction if suspicion is high
+    adjusted_status = ml_status
+    adjusted_confidence = ml_confidence
+    
+    # AGGRESSIVE OVERRIDE: If suspicion score is high, override benign predictions
+    if suspicion_score >= 50:
+        # Force malicious classification with high confidence
+        adjusted_status = "malicious"
+        adjusted_confidence = min(0.95, 0.70 + (suspicion_score / 200))
+        override_details.insert(0, f"🔴 OVERRIDE: High suspicion score ({suspicion_score}/100) - Classified as MALICIOUS")
+    elif suspicion_score >= 30 and ml_status == "benign":
+        # Override benign to suspicious
+        adjusted_status = "suspicious"
+        adjusted_confidence = min(0.85, 0.60 + (suspicion_score / 250))
+        override_details.insert(0, f"🟡 OVERRIDE: Moderate suspicion score ({suspicion_score}/100) - Classified as SUSPICIOUS")
+    elif suspicion_score >= 20 and ml_status == "benign":
+        # Lower confidence in benign prediction
+        adjusted_confidence = max(0.40, ml_confidence - (suspicion_score / 100))
+        override_details.insert(0, f"⚠️ ADJUSTMENT: Reduced confidence due to suspicious indicators (score: {suspicion_score}/100)")
+    
+    return adjusted_status, adjusted_confidence, override_details
+
+
 # --- UPDATED: run_prediction function to include new analysis ---
 def run_prediction(
     url: str, 
@@ -565,7 +686,7 @@ def run_prediction(
         confidence = probabilities[prediction_idx].item()
         
         status_map = {0: "benign", 1: "malicious"}
-        predicted_status = status_map.get(prediction_idx, "unknown")
+        ml_predicted_status = status_map.get(prediction_idx, "unknown")
         
         # 2. Get explainability details with enhanced domain analysis
         explainability_details = analyze_url_for_details(url)
@@ -575,24 +696,38 @@ def run_prediction(
         if domain_info:
             explainability_details.extend(domain_info)
         
-        # 3. Create the response object
-        message = f"URL classified as {predicted_status.upper()}."
+        # 3. **NEW: Apply sensitivity adjustment and rule-based override**
+        adjusted_status, adjusted_confidence, override_details = apply_sensitivity_adjustment(
+            url, ml_predicted_status, confidence, explainability_details
+        )
+        
+        # Add override details to the response
+        if override_details:
+            explainability_details = override_details + explainability_details
+        
+        # Update message to reflect adjustments
+        if adjusted_status != ml_predicted_status:
+            message = f"URL classified as {adjusted_status.upper()} (ML predicted: {ml_predicted_status}, adjusted by security rules)."
+        else:
+            message = f"URL classified as {adjusted_status.upper()}."
+        
+        # 4. Create the response object with adjusted values
         scan_id = f"scn_{uuid.uuid4().hex[:12]}"
 
         # Include user info in response
         response_data = URLScanResponse(
             url=url,
             scan_id=scan_id,
-            status=predicted_status,
+            status=adjusted_status,  # Use adjusted status
             message=message,
-            confidence=round(confidence, 4),
-            model_version="linkshield-bert-v1.0",
+            confidence=round(adjusted_confidence, 4),  # Use adjusted confidence
+            model_version="linkshield-bert-v1.0-enhanced",  # Update version
             details=explainability_details,
             user_id=user_id,  # Add user ID if provided
             scan_timestamp=datetime.now(timezone.utc).isoformat()
         )
         
-        # 4. Save to DB and return
+        # 5. Save to DB and return
         save_scan_to_dynamodb(response_data)
         
         return response_data
