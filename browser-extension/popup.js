@@ -113,26 +113,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Clear previous classes
     indicator.className = 'status-indicator';
     
-    switch (result.status) {
+    // Update based on status (handle both 'safe' and 'benign')
+    const status = result.status === 'benign' ? 'safe' : result.status;
+    
+    switch (status) {
       case 'safe':
         indicator.classList.add('status-safe');
-        statusText.textContent = '✅ Safe';
+        statusText.innerHTML = '<span style="color: #10b981; font-weight: bold;">✅ Safe</span>';
         elements.confidenceScore.textContent = `Confidence: ${Math.round(result.confidence * 100)}%`;
+        elements.confidenceScore.style.color = '#10b981';
         break;
       case 'suspicious':
         indicator.classList.add('status-suspicious');
-        statusText.textContent = '⚠️ Suspicious';
+        statusText.innerHTML = '<span style="color: #f59e0b; font-weight: bold;">⚠️ Suspicious</span>';
         elements.confidenceScore.textContent = `Confidence: ${Math.round(result.confidence * 100)}%`;
+        elements.confidenceScore.style.color = '#f59e0b';
         break;
       case 'malicious':
         indicator.classList.add('status-malicious');
-        statusText.textContent = '🚨 Malicious';
-        elements.confidenceScore.textContent = `Confidence: ${Math.round(result.confidence * 100)}%`;
+        statusText.innerHTML = '<span style="color: #ef4444; font-weight: bold; font-size: 1.1em;">🚨 MALICIOUS - DANGER</span>';
+        elements.confidenceScore.innerHTML = `<span style="color: #ef4444; font-weight: bold;">Confidence: ${Math.round(result.confidence * 100)}%</span>`;
+        // Add pulsing animation to make it more noticeable
+        statusText.style.animation = 'pulse 2s infinite';
         break;
       default:
         indicator.classList.add('status-unknown');
         statusText.textContent = '❓ Unknown';
         elements.confidenceScore.textContent = result.message || 'Unable to analyze';
+        elements.confidenceScore.style.color = '#64748b';
     }
   }
 
@@ -153,12 +161,77 @@ document.addEventListener('DOMContentLoaded', async () => {
         analysis.risk_factors.forEach(factor => {
           const factorDiv = document.createElement('div');
           factorDiv.className = 'risk-factor';
+          
+          // Determine color based on impact level
+          let impactColor = '#64748b'; // default gray
+          let impactBg = '#f1f5f9';
+          
+          if (factor.impact === 'high' || factor.impact === 'critical') {
+            impactColor = '#ef4444'; // red
+            impactBg = '#fee2e2';
+          } else if (factor.impact === 'medium') {
+            impactColor = '#f59e0b'; // orange
+            impactBg = '#fef3c7';
+          } else if (factor.impact === 'low') {
+            impactColor = '#10b981'; // green
+            impactBg = '#d1fae5';
+          }
+          
+          factorDiv.style.backgroundColor = impactBg;
+          factorDiv.style.borderLeft = `4px solid ${impactColor}`;
+          factorDiv.style.padding = '8px';
+          factorDiv.style.marginBottom = '8px';
+          factorDiv.style.borderRadius = '4px';
+          
           factorDiv.innerHTML = `
-            <strong>${factor.name}</strong> (${factor.impact})
-            <br><small>${factor.description}</small>
+            <strong style="color: ${impactColor};">${factor.name}</strong> 
+            <span style="color: ${impactColor}; font-size: 0.85em; font-weight: bold;">(${factor.impact.toUpperCase()})</span>
+            <br><small style="color: #475569;">${factor.description}</small>
           `;
           elements.riskFactors.appendChild(factorDiv);
         });
+        
+        // Also display details if available with severity-based coloring
+        if (analysis.details && Array.isArray(analysis.details)) {
+          analysis.details.forEach(detail => {
+            const detailDiv = document.createElement('div');
+            detailDiv.className = 'risk-factor';
+            
+            let detailColor = '#64748b';
+            let detailBg = '#f1f5f9';
+            let detailBorder = '#cbd5e1';
+            
+            // Check for severity indicators in the detail text
+            if (detail.includes('🚨') || detail.includes('CRITICAL')) {
+              detailColor = '#dc2626';
+              detailBg = '#fee2e2';
+              detailBorder = '#ef4444';
+            } else if (detail.includes('🔴') || detail.includes('OVERRIDE')) {
+              detailColor = '#ef4444';
+              detailBg = '#fef2f2';
+              detailBorder = '#f87171';
+            } else if (detail.includes('⚠️') || detail.includes('ALERT')) {
+              detailColor = '#ea580c';
+              detailBg = '#ffedd5';
+              detailBorder = '#fb923c';
+            } else if (detail.includes('🟡') || detail.includes('WARNING')) {
+              detailColor = '#d97706';
+              detailBg = '#fef3c7';
+              detailBorder = '#fbbf24';
+            }
+            
+            detailDiv.style.backgroundColor = detailBg;
+            detailDiv.style.borderLeft = `4px solid ${detailBorder}`;
+            detailDiv.style.padding = '8px';
+            detailDiv.style.marginBottom = '6px';
+            detailDiv.style.borderRadius = '4px';
+            detailDiv.style.color = detailColor;
+            detailDiv.style.fontSize = '0.9em';
+            detailDiv.innerHTML = `<strong>${detail}</strong>`;
+            
+            elements.riskFactors.appendChild(detailDiv);
+          });
+        }
         
         elements.detailedAnalysis.style.display = 'block';
         elements.detailsBtn.textContent = '📊 Hide Details';

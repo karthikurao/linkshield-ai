@@ -109,8 +109,32 @@ const ScanResultDisplay = ({ result, previousScans = [] }) => {
     // Added a simple keyframe animation for the card appearing
     <div 
       style={{ animation: 'fadeInUp 0.5s ease-out forwards' }}
-      className={`mt-8 p-6 rounded-xl shadow-lg border ${config.borderColor} ${config.bgColor} transition-all duration-300 ease-in-out`}
+      className={`mt-8 p-6 rounded-xl shadow-lg border-2 ${config.borderColor} ${config.bgColor} transition-all duration-300 ease-in-out ${
+        result.status === 'malicious' ? 'ring-4 ring-red-500/30 dark:ring-red-600/40' : ''
+      }`}
     >
+      {/* Add danger banner for malicious URLs */}
+      {result.status === 'malicious' && (
+        <div className="mb-4 -mx-6 -mt-6 p-4 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-t-xl border-b-2 border-red-800">
+          <div className="flex items-center justify-center">
+            <XCircleIcon className="h-6 w-6 mr-2 animate-pulse" />
+            <span className="text-lg font-bold uppercase tracking-wide">⚠️ DANGER - MALICIOUS WEBSITE DETECTED ⚠️</span>
+            <XCircleIcon className="h-6 w-6 ml-2 animate-pulse" />
+          </div>
+          <p className="text-center text-sm mt-1 font-medium">DO NOT ENTER ANY PERSONAL INFORMATION</p>
+        </div>
+      )}
+      
+      {/* Add warning banner for suspicious URLs */}
+      {result.status === 'suspicious' && (
+        <div className="mb-4 -mx-6 -mt-6 p-4 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white rounded-t-xl border-b-2 border-yellow-700">
+          <div className="flex items-center justify-center">
+            <ExclamationTriangleIcon className="h-6 w-6 mr-2" />
+            <span className="text-lg font-bold uppercase tracking-wide">⚠️ SUSPICIOUS WEBSITE - PROCEED WITH CAUTION</span>
+          </div>
+        </div>
+      )}
+      
       <div className="flex items-start">
         <IconComponent className={`h-8 w-8 mr-4 flex-shrink-0 ${config.iconColor}`} />
         <div className="flex-grow">          <h3 className={`text-xl font-bold ${config.textColor} mb-1 capitalize`}>{result.status}</h3>
@@ -434,12 +458,47 @@ const ScanResultDisplay = ({ result, previousScans = [] }) => {
         <div className="mt-4 pt-4 border-t border-slate-300/60 dark:border-slate-700/60">
           <h4 className="text-md font-semibold text-slate-800 dark:text-slate-200 mb-3">Key Factors:</h4>
           <ul className="space-y-2">
-            {result.details.map((detail, index) => (
-              <li key={index} className="flex items-start">
-                <config.detailIcon className={`h-5 w-5 mr-3 flex-shrink-0 ${config.detailIconColor}`} />
-                <span className="text-sm text-slate-700 dark:text-slate-300">{detail}</span>
-              </li>
-            ))}
+            {result.details.map((detail, index) => {
+              // Determine severity based on emoji indicators from backend
+              let severityColor = 'text-slate-700 dark:text-slate-300';
+              let severityBg = 'bg-slate-50 dark:bg-slate-800/50';
+              let severityBorder = 'border-slate-200 dark:border-slate-700';
+              let iconColor = config.detailIconColor;
+              let IconComponent = config.detailIcon;
+              
+              if (detail.includes('🚨') || detail.includes('CRITICAL') || detail.toUpperCase().includes('CRITICAL')) {
+                severityColor = 'text-red-700 dark:text-red-300 font-semibold';
+                severityBg = 'bg-red-50 dark:bg-red-900/30';
+                severityBorder = 'border-red-300 dark:border-red-700';
+                iconColor = 'text-red-600 dark:text-red-400';
+                IconComponent = XCircleIcon;
+              } else if (detail.includes('🔴') || detail.includes('OVERRIDE') || detail.toUpperCase().includes('OVERRIDE')) {
+                severityColor = 'text-red-600 dark:text-red-400 font-medium';
+                severityBg = 'bg-red-50 dark:bg-red-900/20';
+                severityBorder = 'border-red-200 dark:border-red-800';
+                iconColor = 'text-red-500 dark:text-red-400';
+                IconComponent = ExclamationCircleIcon;
+              } else if (detail.includes('⚠️') || detail.includes('ALERT') || detail.toUpperCase().includes('ALERT')) {
+                severityColor = 'text-orange-600 dark:text-orange-400 font-medium';
+                severityBg = 'bg-orange-50 dark:bg-orange-900/20';
+                severityBorder = 'border-orange-200 dark:border-orange-800';
+                iconColor = 'text-orange-500 dark:text-orange-400';
+                IconComponent = ExclamationTriangleIcon;
+              } else if (detail.includes('🟡') || detail.includes('WARNING') || detail.toUpperCase().includes('WARNING')) {
+                severityColor = 'text-yellow-700 dark:text-yellow-300';
+                severityBg = 'bg-yellow-50 dark:bg-yellow-900/20';
+                severityBorder = 'border-yellow-200 dark:border-yellow-800';
+                iconColor = 'text-yellow-500 dark:text-yellow-400';
+                IconComponent = ExclamationTriangleIcon;
+              }
+              
+              return (
+                <li key={index} className={`flex items-start p-3 rounded-md border ${severityBg} ${severityBorder} transition-all duration-200`}>
+                  <IconComponent className={`h-5 w-5 mr-3 flex-shrink-0 ${iconColor}`} />
+                  <span className={`text-sm ${severityColor} break-words`}>{detail}</span>
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}
