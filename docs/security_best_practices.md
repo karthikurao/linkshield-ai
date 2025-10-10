@@ -7,7 +7,7 @@ This document outlines the security measures and best practices implemented in t
 ### JWT Implementation
 
 - **Token Structure**: Each JWT contains a payload with user ID, expiration time, and role
-- **Secret Management**: JWT secrets are stored in AWS Parameter Store as SecureStrings
+- **Secret Management**: JWT secrets are stored in environment variables or a secure vault (e.g., HashiCorp Vault, Doppler)
 - **Token Expiration**: Tokens expire after 60 minutes of inactivity
 - **Refresh Mechanism**: Secure token refresh flow to prevent session hijacking
 
@@ -31,8 +31,8 @@ This document outlines the security measures and best practices implemented in t
 
 ### Data-at-Rest
 
-- **Database Encryption**: RDS instances use AWS KMS for encryption
-- **S3 Encryption**: All objects in S3 buckets are encrypted using SSE-S3
+- **Database Encryption**: Prefer encrypted volumes or managed services with at-rest encryption
+- **Object Storage Encryption**: Encrypt any offloaded artifacts before uploading to external storage
 - **Backup Encryption**: All backups are encrypted with unique keys
 
 ### Data-in-Transit
@@ -88,14 +88,11 @@ This document outlines the security measures and best practices implemented in t
 
 ## Infrastructure Security
 
-### AWS Security
+### Infrastructure Hardening
 
-- **IAM Best Practices**:
-  - Least privilege principle
-  - Role-based access
-  - No hardcoded credentials
-- **Security Groups**: Restrictive inbound/outbound rules
-- **Network Isolation**: Resources in private subnets where possible
+- **Least Privilege**: Grant services only the permissions they require
+- **Segmentation**: Isolate application tiers across network segments or containers
+- **Credential Hygiene**: Never check secrets into source control; rotate regularly
 
 ### CI/CD Security
 
@@ -105,7 +102,7 @@ This document outlines the security measures and best practices implemented in t
 
 ### Monitoring & Alerting
 
-- **CloudWatch Alarms**: Alerts for suspicious activities
+- **Alerting Pipelines**: Configure alerts for suspicious activities via your observability stack (Prometheus, Grafana, ELK, etc.)
 - **Login Monitoring**: Failed login attempts tracked and alerted
 - **API Abuse Detection**: Alerts for unusual API usage patterns
 
@@ -113,7 +110,7 @@ This document outlines the security measures and best practices implemented in t
 
 ### Breach Protocol
 
-1. **Detection**: Monitoring systems for unauthorized access
+1. **Detection**: Review application and OS logs for unauthorized access indicators
 2. **Containment**: Procedures for limiting breach impact
 3. **Eradication**: Removing unauthorized access and fixing vulnerabilities
 4. **Recovery**: Restoring systems to normal operation

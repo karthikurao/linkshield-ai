@@ -7,11 +7,19 @@ on:
     branches: [ main, develop ]
 
 jobs:
-  backend-tests:
+  backend_tests:
     runs-on: ubuntu-latest
     
     steps:
     - uses: actions/checkout@v3
+    
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
     
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -36,7 +44,7 @@ jobs:
         cd backend
         python -m pytest --cov=app tests/ -v
 
-  frontend-tests:
+  frontend_tests:
     runs-on: ubuntu-latest
     
     steps:
@@ -46,6 +54,8 @@ jobs:
       uses: actions/setup-node@v3
       with:
         node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
     
     - name: Install dependencies
       run: |
@@ -62,19 +72,21 @@ jobs:
         cd frontend
         npm test
   
-  build-frontend:
-    needs: frontend-tests
+  build_frontend:
+    needs: frontend_tests
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') }}
     
     steps:
     - uses: actions/checkout@v3
-    
+
     - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
         node-version: '18'
-    
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
     - name: Install dependencies
       run: |
         cd frontend
@@ -91,96 +103,3 @@ jobs:
         name: frontend-build
         path: frontend/dist
 
-  deploy-dev:
-    needs: [backend-tests, build-frontend]
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
-    
-    steps:
-    - uses: actions/checkout@v3
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    
-    - name: Install Serverless Framework
-      run: npm install -g serverless
-    
-    - name: Install dependencies
-      run: |
-        cd backend
-        pip install -r requirements.txt
-    
-    - name: Deploy backend to dev
-      run: |
-        cd backend
-        serverless deploy --stage dev
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-    
-    - name: Download frontend build
-      uses: actions/download-artifact@v3
-      with:
-        name: frontend-build
-        path: frontend-build
-    
-    - name: Deploy frontend to dev
-      uses: aws-actions/configure-aws-credentials@v1
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: us-east-1
-    
-    - name: Upload to S3
-      run: aws s3 sync frontend-build s3://linkshield-dev-frontend/ --delete
-
-  deploy-prod:
-    needs: [backend-tests, build-frontend]
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    environment: production
-    
-    steps:
-    - uses: actions/checkout@v3
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    
-    - name: Install Serverless Framework
-      run: npm install -g serverless
-    
-    - name: Install dependencies
-      run: |
-        cd backend
-        pip install -r requirements.txt
-    
-    - name: Deploy backend to production
-      run: |
-        cd backend
-        serverless deploy --stage prod
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-    
-    - name: Download frontend build
-      uses: actions/download-artifact@v3
-      with:
-        name: frontend-build
-        path: frontend-build
-    
-    - name: Deploy frontend to production
-      uses: aws-actions/configure-aws-credentials@v1
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: us-east-1
-    
-    - name: Upload to S3
-      run: aws s3 sync frontend-build s3://linkshield-prod-frontend/ --delete
-    
-    - name: Invalidate CloudFront cache
-      run: aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"

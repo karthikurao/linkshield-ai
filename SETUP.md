@@ -4,10 +4,10 @@ This document explains how to set up the LinkShield AI project after cloning fro
 
 ## Prerequisites
 
-- Python 3.9+
-- Node.js 16+
+- Python 3.11 (already bundled in `backenv/` virtual environment)
+- Node.js 18+
 - npm or yarn
-- AWS Account (Free Tier)
+- SQLite (bundled with Python)
 
 ## Backend Setup
 
@@ -16,34 +16,24 @@ This document explains how to set up the LinkShield AI project after cloning fro
    cd backend
    `
 
-2. Create a virtual environment:
-   `ash
-   python -m venv venv
+2. Activate the existing virtual environment (Windows PowerShell):
+   `
+   .\backenv\Scripts\Activate.ps1
    `
 
-3. Activate the virtual environment:
-   - Windows:
-     `ash
-     venv\Scripts\activate
-     `
-   - macOS/Linux:
-     `ash
-     source venv/bin/activate
-     `
+   > macOS/Linux users can recreate the environment with `python -m venv backenv` and install the requirements below.
 
-4. Install dependencies:
+3. Install dependencies:
    `ash
    pip install -r requirements.txt
    `
 
-5. Create a .env file with your AWS credentials:
+4. Copy the example environment file and adjust secrets as needed:
    `
-   AWS_ACCESS_KEY_ID=your_access_key
-   AWS_SECRET_ACCESS_KEY=your_secret_key
-   AWS_REGION=us-east-1
+   copy .env.example .env
    `
 
-6. Start the backend server:
+5. Start the backend server:
    `ash
    uvicorn main:app --reload
    `
@@ -82,13 +72,6 @@ If you need to work with the ML models:
 2. Sample datasets are provided for development purposes.
 3. To use the full datasets, contact the repository maintainers or recreate them using the scripts in the ml_training directory.
 
-## AWS Services Used (Free Tier)
-
-- AWS Cognito: User authentication
-- AWS Lambda: Serverless backend functions
-- AWS API Gateway: REST API endpoints
-- AWS S3: Storage for static assets
-
 ## Deployment
 
-Follow the instructions in the deployment guide to deploy the application to AWS.
+Refer to `docs/deployment_guide.md` for local or container-based deployment options.

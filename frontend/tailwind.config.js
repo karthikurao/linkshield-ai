@@ -1,6 +1,6 @@
 // frontend/tailwind.config.js
 /** @type {import('tailwindcss').Config} */
-const defaultTheme = require('tailwindcss/defaultTheme');
+import defaultTheme from 'tailwindcss/defaultTheme';
 
 export default {
   darkMode: 'class',

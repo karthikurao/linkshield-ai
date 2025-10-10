@@ -2,56 +2,56 @@
 
 ## Overview
 
-LinkShield AI uses AWS Cognito for secure authentication. This document explains how authentication works and how to configure it for your environment.
+LinkShield AI now ships with a fully self-hosted authentication stack. The backend exposes FastAPI endpoints for registration, login, and profile management, and issues signed JSON Web Tokens (JWTs) without relying on any external identity provider.
 
 ## Authentication Flow
 
-1. **Sign Up**: Users create an account via the Login page
-2. **Sign In**: Users authenticate using their email and password
-3. **Token Management**: AWS Amplify handles tokens automatically
-4. **Protected Routes**: Routes like `/profile` require authentication
+1. **Sign Up**: Users register via `/api/v1/auth/register`, supplying name, email, and password.
+2. **Sign In**: Users authenticate with `/api/v1/auth/login`. Successful logins return a JWT plus user metadata.
+3. **Token Storage**: The frontend is responsible for storing the `access_token` (for example in memory or secure storage).
+4. **Protected Requests**: Subsequent API calls include the token via the `Authorization: Bearer <token>` header.
+5. **Profile Management**: Authenticated users can read and update their profile via `/api/v1/profile` endpoints.
 
-## Environment Variables
+## Backend Configuration
 
-For authentication to work properly, you need to set these environment variables:
+Create `backend/.env` from the provided template and set the following values:
 
 ```
-VITE_COGNITO_REGION=us-east-1
-VITE_COGNITO_USER_POOL_ID=your_user_pool_id_here
-VITE_COGNITO_APP_CLIENT_ID=your_app_client_id_here
+SECRET_KEY=change_me
+JWT_SECRET_KEY=change_me
+PROJECT_NAME="LinkShield AI"
+API_V1_STR="/api/v1"
 ```
 
-## Setting Up AWS Cognito
+The `SECRET_KEY` secures FastAPI sessions, while `JWT_SECRET_KEY` signs access tokens. Rotate both secrets per environment.
 
-1. **Create a User Pool**:
-   - Go to AWS Console → Cognito → User Pools
-   - Create a new user pool with email sign-in
-   - Add name as a required attribute
+## Frontend Configuration
 
-2. **Create an App Client**:
-   - Within your user pool, create an app client
-   - Enable necessary OAuth flows
-   - Set callback URLs to your frontend URL
+Create `frontend/.env` (or `.env.local`) with the API base URL:
 
-3. **Update Environment Variables**:
-   - Copy your User Pool ID and App Client ID to your `.env` file
+```
+VITE_API_BASE_URL=http://localhost:8000
+VITE_ENABLE_COMMUNITY_PROTECTION=true
+```
 
-## Development Testing
+The React app calls the backend directly and expects JWT tokens returned from the `/auth` routes.
 
-For local development:
-1. Create a `.env` file in the `/frontend` directory
-2. Add the required Cognito variables
-3. Run the application with `npm run dev`
+## Testing the Flow Locally
+
+1. Start the backend (`uvicorn app.main:app --reload`).
+2. Start the frontend (`npm run dev`).
+3. Register a new user through the UI or with `POST /api/v1/auth/register`.
+4. Log in to retrieve a JWT and verify that protected routes such as `/api/v1/profile/me` respond when the `Authorization` header is present.
 
 ## Troubleshooting
 
-- **Login Issues**: Check browser console for authentication errors
-- **Token Expiration**: AWS Amplify handles token refresh automatically
-- **API Access Denied**: Verify your Cognito setup and JWT token configuration
+- **401 Unauthorized**: Confirm the `Authorization` header uses the `Bearer` prefix and the JWT has not expired.
+- **Password Validation**: The backend hashes passwords with bcrypt; ensure the plaintext matches the stored value.
+- **Expired Tokens**: Re-authenticate to obtain a new token. Token lifetime defaults to seven days and can be tuned in `app/api/v1/auth.py`.
 
-## Security Best Practices
+## Security Recommendations
 
-- Never commit `.env` files with real credentials
-- Use environment-specific user pools for dev/staging/production
-- Regularly rotate app client secrets
-- Monitor authentication activity in AWS CloudWatch
+- Never commit `.env` files or hard-coded secrets to source control.
+- Use environment-specific secrets (`development`, `staging`, `production`).
+- Serve the backend behind HTTPS in production to protect tokens in transit.
+- Consider enabling refresh tokens or short-lived access tokens combined with session rotation for production deployments.

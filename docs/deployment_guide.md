@@ -158,80 +158,127 @@ aws rds create-db-instance \
   --db-instance-class db.t3.micro \
   --engine postgres \
   --allocated-storage 20 \
-  --master-username adminuser \
-  --master-user-password YOUR_PASSWORD \
-  --vpc-security-group-ids sg-12345 \
-  --db-name linkshield
-```
+  # Deployment Guide
 
-### 2. Run Database Migrations
+  This guide walks through deploying LinkShield AI without any cloud-specific tooling. The reference setup uses:
 
-Once the database is available:
+  - **Backend**: FastAPI served by Uvicorn/Gunicorn
+  - **Frontend**: Static build served by any HTTP server (e.g., Nginx)
+  - **Database**: Embedded SQLite (default) or external Postgres if configured
 
-```bash
-cd backend
-# Run your database migration script here
-python scripts/db_migrations.py
-```
+  Feel free to adapt these steps to Docker, Kubernetes, or your preferred platform.
 
-## CI/CD Pipeline Setup
+  ## 1. Prepare the Environment
 
-Configure GitHub Actions to automate deployment:
+  1. Clone the repository onto the target host.
+  2. Ensure Python 3.11 and Node.js 18+ are installed.
+  3. Copy `backend/.env.example` to `backend/.env` and set production secrets (`SECRET_KEY`, `JWT_SECRET_KEY`, optional `VIRUSTOTAL_API_KEY`).
+  4. Copy `frontend/.env.example` to `frontend/.env` and point `VITE_API_BASE_URL` to the backend URL that will be exposed (e.g., `https://api.example.com`).
 
-1. Add AWS credentials to GitHub repository secrets:
-   - `AWS_ACCESS_KEY_ID`
-   - `AWS_SECRET_ACCESS_KEY`
+  ## 2. Build and Package the Backend
 
-2. Ensure your repository has the workflow file at `.github/workflows/cicd.yml`
+  ```bash
+  cd backend
+  python -m venv venv
+  source venv/bin/activate  # use backenv\Scripts\activate on Windows
+  pip install -r requirements.txt
 
-3. Push changes to trigger the workflow:
-   - Push to `develop` branch for development environment
-   - Push to `main` branch for production environment
+  # Optional: run the test suite
+  pytest
 
-## Monitoring and Logging
+  # Start the server for smoke testing
+  uvicorn app.main:app --host 0.0.0.0 --port 8000
+  ```
 
-### 1. Configure CloudWatch Logs
+  For production use Gunicorn with Uvicorn workers:
 
-Lambda functions automatically send logs to CloudWatch. To view:
+  ```bash
+  gunicorn app.main:app \
+    --workers 4 \
+    --worker-class uvicorn.workers.UvicornWorker \
+    --bind 0.0.0.0:8000
+  ```
 
-```bash
-aws logs get-log-events --log-group-name /aws/lambda/linkshield-ai-backend-dev-app
-```
+  Place the command in a process manager such as systemd, Supervisor, or pm2 to keep it running.
 
-### 2. Set Up CloudWatch Alarms
+  ## 3. Build the Frontend
 
-```bash
-aws cloudwatch put-metric-alarm \
-  --alarm-name "API-HighErrorRate" \
-  --alarm-description "Alarm if API error rate exceeds threshold" \
-  --metric-name "5XXError" \
-  --namespace "AWS/ApiGateway" \
-  --statistic "Sum" \
-  --period 60 \
-  --threshold 5 \
-  --comparison-operator "GreaterThanThreshold" \
-  --evaluation-periods 1 \
-  --alarm-actions "arn:aws:sns:us-east-1:123456789012:LinkShield-Alerts"
-```
+  ```bash
+  cd frontend
+  npm install
+  npm run build
+  ```
 
-## Troubleshooting
+  The production files are generated in `frontend/dist`. Serve them with any static web server. Example Nginx snippet:
 
-### Common Issues
+  ```
+  server {
+      listen 80;
+      server_name app.example.com;
 
-1. **CORS Errors**: Ensure API Gateway has proper CORS configuration
-2. **Database Connection Issues**: Check security groups and network ACLs
-3. **Lambda Timeouts**: Increase timeout value in serverless.yml
-4. **S3 Access Denied**: Verify bucket policy and permissions
+      root /var/www/linkshield-frontend/dist;
+      index index.html;
 
-### Useful Commands
+      location / {
+          try_files $uri /index.html;
+      }
+  }
+  ```
 
-```bash
-# Check Lambda logs
-serverless logs -f app
+  Copy the `dist` directory to `/var/www/linkshield-frontend/dist` (or similar) and reload Nginx.
 
-# Test API endpoint
-curl -X GET https://your-api-endpoint.execute-api.us-east-1.amazonaws.com/dev/health
+  ## 4. Reverse Proxy Setup (Optional but Recommended)
 
-# Verify database connection
-aws rds describe-db-instances --db-instance-identifier linkshield-$STAGE
-```
+  Terminate HTTPS and proxy traffic to the backend with Nginx or another reverse proxy:
+
+  ```
+  server {
+      listen 443 ssl;
+      server_name api.example.com;
+
+      ssl_certificate /etc/letsencrypt/live/api.example.com/fullchain.pem;
+      ssl_certificate_key /etc/letsencrypt/live/api.example.com/privkey.pem;
+
+      location / {
+          proxy_pass http://127.0.0.1:8000;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+      }
+  }
+  ```
+
+  Use Certbot or your certificate authority of choice to provision TLS certificates.
+
+  ## 5. Database Considerations
+
+  - The default SQLite database (`backend/app/linkshield.db`) works well for small deployments. Ensure the application user has write permissions to that file.
+  - For Postgres or another external database, update the connection logic in `app/database.py` accordingly and configure environment variables as needed.
+  - Remember to schedule regular backups regardless of the engine.
+
+  ## 6. CI/CD Alignment
+
+  The GitHub Actions workflow (`.github/workflows/cicd.yml`) currently runs:
+
+  - Backend unit tests
+  - Frontend lint + tests
+  - Frontend build artifact upload
+
+  Hook the generated build artifact into your deployment pipeline or extend the workflow with SSH/SFTP steps to push assets to your server.
+
+  ## 7. Post-Deployment Checks
+
+  1. Hit `https://api.example.com/health` to confirm the backend is healthy.
+  2. Log in through the frontend to ensure authentication works end-to-end.
+  3. Verify static assets load correctly and no mixed-content warnings appear in the browser console.
+  4. Monitor server logs (`journalctl`, Nginx access/error logs, Gunicorn logs) for the first few hours of traffic.
+
+  ## 8. Hardening Tips
+
+  - Run the backend under a dedicated OS user with minimal permissions.
+  - Enable automatic restarts (systemd `Restart=always`) for the API service.
+  - Serve the frontend with HTTP/2 and gzip/brotli compression.
+  - Configure a Web Application Firewall (WAF) or reverse proxy rate limits if exposing the API publicly.
+
+  With these steps, LinkShield AI can be hosted on any VM or container platform without depending on AWS-specific services.

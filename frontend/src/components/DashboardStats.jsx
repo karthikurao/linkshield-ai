@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { getStatistics } from '../services/api';
 
 // Custom colors for charts
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
@@ -56,7 +55,7 @@ const DashboardStats = () => {
         
         setStats(mockData);
         setLoading(false);
-      } catch (err) {
+      } catch {
         setError('Failed to load statistics');
         setLoading(false);
       }
