@@ -60,11 +60,7 @@ jobs:
     - name: Install dependencies
       working-directory: frontend
       run: |
-        if [ -f package-lock.json ]; then
-          npm ci
-        else
-          npm install
-        fi
+        npm install --no-audit --no-fund
     
     - name: Run linting
       run: |
@@ -94,11 +90,7 @@ jobs:
     - name: Install dependencies
       working-directory: frontend
       run: |
-        if [ -f package-lock.json ]; then
-          npm ci
-        else
-          npm install
-        fi
+        npm install --no-audit --no-fund
     
     - name: Build
       run: |
