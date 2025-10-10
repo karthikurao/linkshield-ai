@@ -9,8 +9,6 @@ except ImportError:
     transformers_available = False
 import torch
 import uuid
-import boto3
-from decimal import Decimal
 import os
 from datetime import datetime, timezone
 from typing import List, Optional
@@ -21,19 +19,10 @@ import ssl
 import requests
 import whois
 import time
-from datetime import datetime
 
 # Import configuration which loads environment variables
 from app.core import config
-
-# ... (AWS Service Client Initialization remains the same) ...
-try:
-    dynamodb = boto3.resource('dynamodb', region_name=config.AWS_REGION)
-    cognito_client = boto3.client('cognito-idp', region_name=config.AWS_REGION)
-    scan_history_table = dynamodb.Table(config.SCAN_HISTORY_TABLE_NAME)
-except Exception as e:
-    print(f"Error initializing AWS clients: {e}")
-    dynamodb = cognito_client = scan_history_table = None
+from app.database import ScanDatabase
 
 
 # --- NEW: Fallback Prediction Function ---
@@ -207,23 +196,18 @@ def get_fallback_prediction(url: str, user_id: Optional[str] = None) -> URLScanR
         user_id=user_id,
         scan_timestamp=scan_timestamp
     )
-      # Save scan to history if user is authenticated
-    if user_id and scan_history_table:
-        try:
-            # Store the scan result in the history table
-            item = {                'scan_id': result.scan_id,
-                'user_id': user_id,
-                'url': result.url,
-                'status': result.status,
-                'confidence': Decimal(str(result.confidence)),
-                'scan_timestamp': result.scan_timestamp,
-                'risk_level': risk_level,
-                'risk_score': Decimal(str(risk_score))
-            }
-            scan_history_table.put_item(Item=item)
-            print(f"Stored scan in history for user {user_id}: {result.scan_id}")
-        except Exception as e:
-            print(f"Error storing scan in history: {e}")
+    # Save scan to local history if user is authenticated
+    if user_id:
+        stored = ScanDatabase.save_scan(
+            user_id=user_id,
+            url=url,
+            result=status,
+            confidence=result.confidence
+        )
+        if stored:
+            print(f"Stored fallback scan in history for user {user_id}: {result.scan_id}")
+        else:
+            print(f"Failed to store fallback scan for user {user_id}")
     
     return result
 
@@ -488,75 +472,17 @@ def get_domain_info(url: str) -> List[str]:
     
     return details
 
-
-# --- (update_user_attributes, save_scan_to_dynamodb, get_scan_history remain the same) ---
-# ...
-def update_user_attributes(username: str, attributes_to_update: dict):
-    if not cognito_client or not config.COGNITO_USER_POOL_ID:
-        raise HTTPException(status_code=503, detail="Cognito service not configured.")
-    
-    # Map frontend attribute names to Cognito attribute names if needed
-    cognito_attr_map = {
-        'name': 'name',
-        'email': 'email',
-        'phone_number': 'phone_number'
-        # Add any other mappings here if needed
-    }
-    
-    # Convert to the format Cognito expects and apply mapping
-    user_attributes = []
-    updated_attrs = []
-    
-    for key, value in attributes_to_update.items():
-        if value is not None and value != '':  # Skip None or empty values
-            cognito_key = cognito_attr_map.get(key, key)
-            user_attributes.append({'Name': cognito_key, 'Value': value})
-            updated_attrs.append(key)
-    
-    # Print for debugging
-    print(f"Updating attributes for user {username}: {user_attributes}")
-    
+def save_scan_to_history(scan_result: URLScanResponse) -> None:
+    """Persist scan results using the local SQLite history table."""
     try:
-        if user_attributes:  # Only call the API if there are attributes to update
-            cognito_client.admin_update_user_attributes(
-                UserPoolId=config.COGNITO_USER_POOL_ID,
-                Username=username,
-                UserAttributes=user_attributes
-            )
-            
-            return {
-                "status": "success",
-                "message": "Profile updated successfully",
-                "updated_attributes": updated_attrs
-            }
-        else:
-            return {
-                "status": "info",
-                "message": "No attributes to update",
-                "updated_attributes": []
-            }
-    except Exception as e:
-        print(f"Error updating user attributes: {e}")
-        raise HTTPException(status_code=500, detail=f"Could not update user attributes: {str(e)}")
-
-def save_scan_to_dynamodb(scan_result: URLScanResponse):
-    # (no changes to this function)
-    if not scan_history_table: return
-    try:
-        item_to_save = scan_result.dict()
-        item_to_save['scan_timestamp'] = datetime.now(timezone.utc).isoformat()
-        if item_to_save.get('confidence') is not None: item_to_save['confidence'] = Decimal(str(item_to_save['confidence']))
-        scan_history_table.put_item(Item=item_to_save)
-    except Exception as e: print(f"Error saving scan result to DynamoDB: {e}")
-
-def get_scan_history(limit: int = 10) -> List[dict]:
-    # (no changes to this function)
-    if not scan_history_table: return []
-    try:
-        response = scan_history_table.scan(Limit=limit)
-        items = sorted(response.get('Items', []), key=lambda item: item.get('scan_timestamp', ''), reverse=True)
-        return items
-    except Exception as e: print(f"Error fetching scan history from DynamoDB: {e}"); return []
+        ScanDatabase.save_scan(
+            user_id=scan_result.user_id,
+            url=scan_result.url,
+            result=scan_result.status,
+            confidence=scan_result.confidence,
+        )
+    except Exception as exc:
+        print(f"Error saving scan result to local history: {exc}")
 
 
 # --- NEW: Enhanced Phishing Detection with Sensitivity Adjustment ---
@@ -572,6 +498,23 @@ def apply_sensitivity_adjustment(url: str, ml_status: str, ml_confidence: float,
     path = parsed_url.path
     query = parsed_url.query
     
+    # Helper to extract top-level registrable domain (best-effort)
+    def get_registrable_domain(host: str) -> str:
+        if not host:
+            return ""
+        parts = host.split('.')
+        if len(parts) <= 2:
+            return host
+        # Handle common second level TLDs (co.uk, com.au, co.in, etc.)
+        second_level_tlds = {"co.uk", "com.au", "co.in", "com.br", "com.sg", "com.mx", "co.jp"}
+        last_two = ".".join(parts[-2:])
+        last_three = ".".join(parts[-3:])
+        if last_three in second_level_tlds:
+            return ".".join(parts[-4:]) if len(parts) >= 4 else last_three
+        if last_two in second_level_tlds:
+            return ".".join(parts[-3:]) if len(parts) >= 3 else last_two
+        return last_two
+
     # Initialize suspicion score
     suspicion_score = 0
     override_details = []
@@ -584,14 +527,48 @@ def apply_sensitivity_adjustment(url: str, ml_status: str, ml_confidence: float,
         'apple', 'microsoft', 'google', 'verification', 'locked'
     ]
     
-    found_keywords = [kw for kw in high_risk_keywords if kw in url.lower()]
+    lower_url = url.lower()
+    found_keywords = [kw for kw in high_risk_keywords if kw in lower_url]
     if found_keywords:
         suspicion_score += len(found_keywords) * 15
         override_details.append(f"⚠️ ALERT: Contains {len(found_keywords)} high-risk phishing keyword(s): {', '.join(found_keywords[:3])}")
     
+    hostname_lower = hostname.lower()
+
+    # 1a. Detect brand impersonation
+    brand_domains = {
+        "paypal": ["paypal.com", "paypal.co.uk"],
+        "amazon": ["amazon.com", "amazon.co.uk"],
+        "google": ["google.com", "google.co.uk"],
+        "microsoft": ["microsoft.com"],
+        "apple": ["apple.com"],
+        "netflix": ["netflix.com"],
+        "facebook": ["facebook.com"],
+        "instagram": ["instagram.com"],
+        "youtube": ["youtube.com"],
+        "bankofamerica": ["bankofamerica.com"],
+        "wellsfargo": ["wellsfargo.com"],
+        "chase": ["chase.com"],
+        "sbi": ["onlinesbi.sbi", "sbi.co.in"],
+    "hdfc": ["hdfcbank.com"],
+    }
+
+    registrable_domain = get_registrable_domain(hostname_lower)
+
+    for brand, legit_domains in brand_domains.items():
+        if brand in hostname_lower or brand in lower_url:
+            if not any(registrable_domain.endswith(ld) for ld in legit_domains):
+                suspicion_score += 25
+                override_details.append(f"🚨 CRITICAL: Possible impersonation of {brand.title()} detected")
+            elif hostname_lower != legit_domains[0]:
+                # Domain includes brand but with extra words (e.g., paypal-secure.com)
+                if not hostname_lower.endswith(tuple(legit_domains)):
+                    suspicion_score += 15
+                    override_details.append(f"⚠️ ALERT: {brand.title()} brand name combined with additional host segments")
+
     # 2. Check for suspicious TLDs (commonly used in phishing)
     suspicious_tlds = ['.xyz', '.tk', '.top', '.club', '.gq', '.ml', '.ga', '.cf', '.info', '.loan', '.pw', '.buzz', '.click']
-    if any(hostname.endswith(tld) for tld in suspicious_tlds):
+    if any(hostname_lower.endswith(tld) for tld in suspicious_tlds):
         suspicion_score += 20
         tld = '.' + hostname.split('.')[-1] if '.' in hostname else ''
         override_details.append(f"⚠️ ALERT: Uses high-risk TLD: {tld}")
@@ -617,48 +594,75 @@ def apply_sensitivity_adjustment(url: str, ml_status: str, ml_confidence: float,
         'g00gle', 'gogle', 'amaz0n', 'micr0soft', 'faceb00k', 
         'payp', 'netfl', 'appl-', 'twiter', 'lnkedin', 'instgrm'
     ]
-    if any(pattern in hostname.lower() for pattern in typosquatting_patterns):
+    if any(pattern in hostname_lower for pattern in typosquatting_patterns):
         suspicion_score += 25
         override_details.append("🚨 CRITICAL: Possible typosquatting detected - impersonation attempt")
     
     # 7. Check for suspicious character patterns
-    if '@' in hostname or '%' in hostname[:50]:  # @ in hostname or early encoding
+    if '@' in hostname_lower or '%' in hostname_lower[:50]:  # @ in hostname or early encoding
         suspicion_score += 20
         override_details.append("⚠️ ALERT: Suspicious characters in hostname - possible deception")
     
     # 8. Check for very long URLs (common in phishing)
-    if len(url) > 150:
+    if len(url) > 120:
         suspicion_score += 10
         override_details.append(f"⚠️ WARNING: Unusually long URL ({len(url)} characters)")
     
     # 9. Check for multiple hyphens in domain (suspicious pattern)
-    if hostname.count('-') > 2:
-        suspicion_score += 10
-        override_details.append(f"⚠️ WARNING: Multiple hyphens in domain ({hostname.count('-')})")
+    hyphen_count = hostname.count('-')
+    if hyphen_count > 1:
+        suspicion_score += 10 + max(0, hyphen_count - 2) * 5
+        override_details.append(f"⚠️ WARNING: Multiple hyphens in domain ({hyphen_count})")
     
     # 10. Check for URL encoding abuse
-    if url.count('%') > 3:
+    if lower_url.count('%') > 3:
         suspicion_score += 15
         override_details.append(f"⚠️ ALERT: Excessive URL encoding ({url.count('%')} instances)")
+
+    # 11. Evaluate detail strings provided by structural analysis
+    for detail in details or []:
+        detail_lower = detail.lower()
+        if any(keyword in detail_lower for keyword in ["typosquatting", "impersonating", "impersonation"]):
+            suspicion_score += 20
+            override_details.append("🚨 CRITICAL: Structural analysis flagged brand impersonation")
+        if "ssl certificate validation failed" in detail_lower:
+            suspicion_score += 15
+            override_details.append("⚠️ ALERT: SSL certificate validation issues detected")
+        if "domain is very new" in detail_lower:
+            suspicion_score += 20
+            override_details.append("⚠️ WARNING: Domain age suggests newly registered website")
+        elif "domain is relatively new" in detail_lower:
+            suspicion_score += 10
+        if "ip address" in detail_lower and "hostname" in detail_lower:
+            suspicion_score += 10
+        if "suspicious top-level domain" in detail_lower:
+            suspicion_score += 10
+        if "special characters" in detail_lower:
+            suspicion_score += 10
+        if "excessive" in detail_lower and ("query" in detail_lower or "encoding" in detail_lower):
+            suspicion_score += 8
+
+    # Ensure suspicion score has realistic upper bound
+    suspicion_score = min(150, suspicion_score)
     
     # Decision logic: Override ML prediction if suspicion is high
     adjusted_status = ml_status
     adjusted_confidence = ml_confidence
     
     # AGGRESSIVE OVERRIDE: If suspicion score is high, override benign predictions
-    if suspicion_score >= 50:
+    if suspicion_score >= 40:
         # Force malicious classification with high confidence
         adjusted_status = "malicious"
-        adjusted_confidence = min(0.95, 0.70 + (suspicion_score / 200))
+        adjusted_confidence = min(0.98, 0.70 + (suspicion_score / 180))
         override_details.insert(0, f"🔴 OVERRIDE: High suspicion score ({suspicion_score}/100) - Classified as MALICIOUS")
-    elif suspicion_score >= 30 and ml_status == "benign":
+    elif suspicion_score >= 25 and ml_status == "benign":
         # Override benign to suspicious
         adjusted_status = "suspicious"
-        adjusted_confidence = min(0.85, 0.60 + (suspicion_score / 250))
+        adjusted_confidence = min(0.9, 0.60 + (suspicion_score / 220))
         override_details.insert(0, f"🟡 OVERRIDE: Moderate suspicion score ({suspicion_score}/100) - Classified as SUSPICIOUS")
-    elif suspicion_score >= 20 and ml_status == "benign":
+    elif suspicion_score >= 15 and ml_status == "benign":
         # Lower confidence in benign prediction
-        adjusted_confidence = max(0.40, ml_confidence - (suspicion_score / 100))
+        adjusted_confidence = max(0.30, ml_confidence - (suspicion_score / 90))
         override_details.insert(0, f"⚠️ ADJUSTMENT: Reduced confidence due to suspicious indicators (score: {suspicion_score}/100)")
     
     return adjusted_status, adjusted_confidence, override_details
@@ -729,7 +733,7 @@ def run_prediction(
         )
         
         # 5. Save to DB and return
-        save_scan_to_dynamodb(response_data)
+        save_scan_to_history(response_data)
         
         return response_data
 
@@ -737,102 +741,3 @@ def run_prediction(
         print(f"Error during model inference for URL {url}: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error processing URL with ML model: {str(e)}")
 
-
-# --- NEW: User Profile and Authentication Management Functions ---
-def get_user_profile(username: str):
-    """
-    Retrieves the complete user profile from Cognito.
-    """
-    if not cognito_client or not config.COGNITO_USER_POOL_ID:
-        raise HTTPException(status_code=503, detail="Cognito service not configured.")
-    
-    try:
-        user_response = cognito_client.admin_get_user(
-            UserPoolId=config.COGNITO_USER_POOL_ID,
-            Username=username
-        )
-        
-        # Extract user attributes into a dictionary
-        attributes = {}
-        for attr in user_response.get('UserAttributes', []):
-            attributes[attr['Name']] = attr['Value']
-        
-        # For debugging
-        print(f"Retrieved attributes for user {username}: {attributes}")
-            
-        # Make sure all expected fields are present, even if Cognito doesn't return them
-        return {
-            "username": username,
-            "user_id": attributes.get('sub', ''),
-            "email": attributes.get('email', ''),
-            "email_verified": attributes.get('email_verified', 'false') == 'true',
-            "name": attributes.get('name', ''),
-            "phone_number": attributes.get('phone_number', ''),
-            "created_at": user_response.get('UserCreateDate').isoformat() if user_response.get('UserCreateDate') else None,
-            "last_modified": user_response.get('UserLastModifiedDate').isoformat() if user_response.get('UserLastModifiedDate') else None
-        }
-        
-    except Exception as e:
-        print(f"Error retrieving user profile: {e}")
-        raise HTTPException(status_code=500, detail=f"Could not retrieve user profile: {str(e)}")
-
-def change_password(access_token: str, previous_password: str, new_password: str):
-    """
-    Changes the password for an authenticated user.
-    """
-    if not cognito_client:
-        raise HTTPException(status_code=503, detail="Cognito service not configured.")
-    
-    try:
-        cognito_client.change_password(
-            AccessToken=access_token,
-            PreviousPassword=previous_password,
-            ProposedPassword=new_password
-        )
-        return {"status": "success", "message": "Password changed successfully"}
-    except Exception as e:
-        print(f"Error changing password: {e}")
-        raise HTTPException(status_code=500, detail=f"Could not change password: {str(e)}")
-        
-def initiate_forgot_password(username: str):
-    """
-    Initiates the forgot password flow by sending a reset code.
-    """
-    if not cognito_client:
-        raise HTTPException(status_code=503, detail="Cognito service not configured.")
-    
-    try:
-        response = cognito_client.forgot_password(
-            ClientId=config.COGNITO_APP_CLIENT_ID,
-            Username=username
-        )
-        return {
-            "status": "success",
-            "message": "Password reset code sent successfully",
-            "delivery": response.get('CodeDeliveryDetails', {})
-        }
-    except Exception as e:
-        print(f"Error initiating password reset: {e}")
-        raise HTTPException(status_code=500, detail=f"Could not initiate password reset: {str(e)}")
-
-def confirm_forgot_password(username: str, confirmation_code: str, new_password: str):
-    """
-    Completes the forgot password flow by confirming the code and setting a new password.
-    """
-    if not cognito_client:
-        raise HTTPException(status_code=503, detail="Cognito service not configured.")
-    
-    try:
-        cognito_client.confirm_forgot_password(
-            ClientId=config.COGNITO_APP_CLIENT_ID,
-            Username=username,
-            ConfirmationCode=confirmation_code,
-            Password=new_password
-        )
-        return {"status": "success", "message": "Password reset successfully"}
-    except Exception as e:
-        print(f"Error confirming password reset: {e}")
-        raise HTTPException(status_code=500, detail=f"Could not reset password: {str(e)}")
-
-# This part of the file was removed because it was a duplicate function
-# The get_fallback_prediction function is already defined earlier in the file

@@ -1,12 +1,24 @@
 # backend/app/main.py
 from fastapi import FastAPI
-from starlette.requests import Request # Correct import
+from starlette.requests import Request  # Correct import
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1 import predict as predict_v1, history as history_v1, profile as profile_v1, analyze as analyze_v1, auth
-from transformers import BertForSequenceClassification, BertTokenizer
 import os
-import torch
 from datetime import datetime, timezone
+
+try:
+    from transformers import BertForSequenceClassification, BertTokenizer
+    transformers_available = True
+except ImportError:
+    BertForSequenceClassification = BertTokenizer = None
+    transformers_available = False
+
+try:
+    import torch
+    torch_available = True
+except ImportError:
+    torch = None  # type: ignore
+    torch_available = False
 
 app = FastAPI(
     title="LinkShield AI API",
@@ -26,9 +38,15 @@ MODEL_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "ml_models"
 
 @app.on_event("startup")
 async def startup_event():
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if torch_available and torch is not None:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        device_descriptor = str(device)
+    else:
+        device = "cpu"
+        device_descriptor = "cpu (torch unavailable)"
+
     app.state.device = device
-    print(f"Backend running on device: {device}")
+    print(f"Backend running on device: {device_descriptor}")
     
     # Initialize model variables
     app.state.model = None
@@ -43,6 +61,22 @@ async def startup_event():
             print(error_msg)
             return
         
+        if not transformers_available or not torch_available:
+            missing_component = []
+            if not transformers_available:
+                missing_component.append("transformers library")
+            if not torch_available:
+                missing_component.append("torch library")
+
+            error_msg = (
+                "Missing runtime dependencies: "
+                + ", ".join(missing_component)
+                + ". Using fallback prediction."
+            )
+            app.state.model_load_error = error_msg
+            print(error_msg)
+            return
+
         # Check if required model files exist
         # Support both pytorch_model.bin (older format) and model.safetensors (newer format)
         model_file_exists = os.path.exists(os.path.join(MODEL_DIR, "pytorch_model.bin")) or os.path.exists(os.path.join(MODEL_DIR, "model.safetensors"))
@@ -144,11 +178,3 @@ async def health_check(request: Request):
         "model_details": model_details
     }
 
-from mangum import Mangum
-handler = Mangum(app)
-
-# In your ProfileView.vue - make sure URLs match your backend routes
-# Should be using:
-# const response = await fetch('/api/v1/profile/me', {
-#   headers: { 'Authorization': `Bearer ${this.getAuthToken()}` }
-# });
