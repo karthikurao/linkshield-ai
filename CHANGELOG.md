@@ -2,6 +2,18 @@
 
 All notable changes to the LinkShield AI project will be documented in this file.
 
+## [2.1.1] - 2026-02-22
+
+### 🔒 Security
+- **Removed hardcoded JWT secret key defaults** from four backend files
+- **Centralized JWT configuration** in `backend/app/core/config.py`
+- **Added runtime warnings** when `SECRET_KEY` or `JWT_SECRET_KEY` environment variables are not set
+- **Updated CI pipeline** to supply `JWT_SECRET_KEY` in test environment
+
+### 🔧 Changed
+- Auth modules (`core/auth.py`, `api/v1/auth.py`, `api/v1/auth_utils.py`) now import secrets from central config
+- Updated `.env.example` with generation instructions for required secret keys
+
 ## [2.1.0] - 2025-10-08
 
 ### 🎯 Added

@@ -6,12 +6,10 @@ from datetime import datetime, timedelta
 from typing import Optional
 import jwt
 import bcrypt
-import os
 from app.database import UserDatabase
 
-# JWT configuration
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-this-in-production")
-ALGORITHM = "HS256"
+# JWT configuration — imported from central config; no hardcoded secrets.
+from app.core.config import JWT_SECRET_KEY as SECRET_KEY, ALGORITHM
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days for better UX
 
 router = APIRouter()

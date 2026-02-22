@@ -4,15 +4,10 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import jwt
 from jwt.exceptions import InvalidTokenError
 from datetime import datetime, timedelta
-import os
+from app.core.config import JWT_SECRET_KEY as SECRET_KEY, ALGORITHM
 
 # Security scheme for JWT Bearer token
 security = HTTPBearer()
-
-# In a real application, these would be environment variables
-# For this example, we'll use hardcoded values
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "linkshield_development_secret_key")
-ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 
 def create_access_token(data: dict):

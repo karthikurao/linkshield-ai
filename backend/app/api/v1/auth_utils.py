@@ -6,11 +6,9 @@ from starlette import status
 from jose.exceptions import JWTError
 from app.database import UserDatabase
 from typing import Optional
-import os
 
-# JWT configuration
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-this-in-production")
-ALGORITHM = "HS256"
+# JWT configuration — imported from central config; no hardcoded secrets.
+from app.core.config import JWT_SECRET_KEY as SECRET_KEY, ALGORITHM
 
 async def get_current_user_sub(request: Request) -> str:
     """Extract user ID from JWT token in request headers."""
